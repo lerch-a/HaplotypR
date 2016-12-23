@@ -1,9 +1,9 @@
-Package: haplotypR
+Package: HaplotypR
 Type: Package
-Title: What the package does (short line)
-Version: 1.0
-Date: 2015-06-20
+Title: HaplotypR, a pipeline to analyse amplicon deep sequencing genotyping data
+Version: 0.99
+Date: 2016-12-20
 Author: Anita Lerch
 Maintainer: Anita Lerch <anita.lerch@unibas.ch>
-Description: More about what it does (maybe more than one line)
-License: What license is it under?
+Description: A pipeline to analyse amplicon deep sequencing genotyping data
+License: GPLv3
