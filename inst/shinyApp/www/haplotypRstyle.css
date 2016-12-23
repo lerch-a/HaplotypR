@@ -1,0 +1,25 @@
+
+/* New-style progress (uses notifications API) */
+.shiny-progress-notification .progress {
+  margin-bottom: 5px;
+  height: 50px;
+}
+
+.shiny-progress-notification .progress-text .progress-message {
+  font-weight: bold;
+  font-size: 90%;
+}
+
+.shiny-progress-notification .progress-text .progress-detail {
+  font-size: 80%;
+}
+
+#shiny-notification-panel {
+  position: fixed;
+  top: 50%; /*bottom:0;*/
+  right: 25%;  /*0*/
+  background-color: rgba(0,0,0,0);
+  padding: 2px;
+  width: 50%; /*250px;*/
+  z-index: 99999;
+}

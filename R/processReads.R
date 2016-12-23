@@ -1,0 +1,198 @@
+
+demultiplexReads <- function(fastqFileFwd, fastqFileRev, barcodeFileFwd, barcodeFileRev, outputDir, adapterFwd=NULL, adapterRev=NULL, max.mismatch=0, with.indels=F){
+  
+  # Read barcodes
+  barcodesFwd <- readDNAStringSet(barcodeFileFwd)
+  barcodesFwdLength <- unique(width(barcodesFwd))
+  if(length(barcodesFwdLength)>1)
+    stop("Barcodes length must have equal length.")
+  barcodesRev <- readDNAStringSet(barcodeFileRev)
+  barcodesRevLength <- unique(width(barcodesRev))
+  if(length(barcodesRevLength)>1)
+    stop("Barcodes length must have equal length.")  
+  
+  # check existing output files
+  of <- list.files(path=outputDir, pattern=names(barcodesFwd))
+  if(length(of)>0)
+    stop("Existing output files: ", paste(of, collapse=", "))
+  
+  f1 <- FastqStreamer(fastqFileFwd)
+  f2 <- FastqStreamer(fastqFileRev)
+  mode <- "w"
+  countReads <- 0
+  sumDemultiplex <- character(0)
+  message("Processing file ", fastqFileFwd, " and ", fastqFileRev, " ...")
+  while(length(sr1 <- yield(f1)) > 0){
+    sr2 <- yield(f2)
+    countReads <- countReads + length(sr1)
+    
+    if(is.null(adapterFwd)){
+      sr1_trim <- narrow(sr1, start=1, width=barcodesFwdLength)
+      sr2_trim <- narrow(sr2, start=1, width=barcodesRevLength) 
+    } else {
+      
+      #      matchPDict( whichPDict
+      #       index <- vmatchPattern(adapterFwd, sread(sr1), max.mismatch=max.mismatch, with.indels=with.indels)
+      #       
+      #       fPrimEnd <- vmatchPattern(primerFw, sread(sr1), max.mismatch=max.mismatch, with.indels=with.indels)
+      #       fPrimEnd <- unlist(lapply(fPrimEnd, end))
+      #index <- unlist(lapply(index, length))==1
+      #sr1 <- sr1[index]
+      #sr2 <- sr2[index]
+      #sr1_trim <- narrow(sr1, start=fPrimEnd, width=ifelse(width(sr1)-fPrimEnd>=read1Length, read1Length, NA))
+    }
+    
+    idxFwd <- match(sread(sr1_trim), barcodesFwd)
+    idxRev <- match(sread(sr2_trim), barcodesRev)
+    
+    idx <- paste(names(barcodesFwd)[idxFwd], names(barcodesRev)[idxRev], sep="-")
+    sumDemultiplex <- c(sumDemultiplex, idx)
+    sr1_lst <- split(sr1, idx)
+    sr2_lst <- split(sr2, idx)
+    
+    lapply(seq_along(sr1_lst), function(i){
+      outFile <- file.path(outputDir, names(sr1_lst[i]))
+      writeFastq(sr1_lst[[i]], file=paste(outFile, "_R1.fastq.gz", sep=""), mode=mode, compress=T)
+      writeFastq(sr2_lst[[i]], file=paste(outFile, "_R2.fastq.gz", sep=""), mode=mode, compress=T)
+    })
+    
+    mode <- "a"
+    message(countReads, " reads done ...")
+  }
+  message("... total demultiplexed reads:", countReads)
+  close(f1)
+  close(f2)
+  table(sumDemultiplex)
+}
+
+removePrimer <- function(fastqFileR1, fastqFileR2, outputFile, primerFwd, primerRev, 
+                          max.mismatch=0, with.indels=F, outputPrimerSequence=F){
+  
+  message("Processing file", fastqFileR1[i], "and", fastqFileR2[i], "...", sep=" ")
+  if(length(fastqFileR1) != length(fastqFileR2))
+    stop("Vector length of fastqFileR1 and fastqFileR2 not identical.")
+  
+  f1 <- FastqStreamer(fastqFileR1)
+  f2 <- FastqStreamer(fastqFileR2)
+  mode <- "w"
+  totalReads <- 0
+  filteredReads <- 0
+  while(length(sr1 <- yield(f1)) > 0){
+    sr2 <- yield(f2)
+    totalReads <- totalReads+length(sr1)
+    
+    index <- vmatchPattern(primerFwd, sread(sr1), max.mismatch=max.mismatch, with.indels=with.indels)
+    index <- unlist(lapply(index, length))==1
+    sr1 <- sr1[index]
+    sr2 <- sr2[index]
+    
+    index <- vmatchPattern(primerRev, sread(sr2), max.mismatch=max.mismatch, with.indels=with.indels)
+    index <- unlist(lapply(index, length))==1
+    sr2 <- sr2[index]
+    sr1 <- sr1[index]
+    
+    if(length(sr1)>1){
+      fPrimEnd <- vmatchPattern(primerFwd, sread(sr1), max.mismatch=max.mismatch, with.indels=with.indels)
+      fPrimEnd <- unlist(lapply(fPrimEnd, end))
+      sr1_trim <- narrow(sr1, start=fPrimEnd, width=NA)
+      start <- fPrimEnd-nchar(primerFwd)+1
+      sr1_prim <- narrow(sr1, start=ifelse(start<1, 1, start), end=fPrimEnd)
+      
+      rPrimEnd <- vmatchPattern(primerRev, sread(sr2), max.mismatch=max.mismatch, with.indels=with.indels)
+      rPrimEnd <- unlist(lapply(rPrimEnd, end))
+      sr2_trim <- narrow(sr2, start=rPrimEnd, width=NA)
+      start <-  rPrimEnd-nchar(primerRev)+1
+      sr2_prim <- narrow(sr2, start=ifelse(start<1, 1, start), end=rPrimEnd)
+      
+      if(outputPrimerSequence){
+        writeFastq(sr1_prim, 
+                   file=paste(outputFile, "_primerF.fastq.gz", sep=""), mode=mode, compress=T)
+        writeFastq(sr2_prim, 
+                   file=paste(outputFile, "_primerR.fastq.gz", sep=""), mode=mode, compress=T)
+      }
+      writeFastq(sr1_trim, file=paste(outputFile, "_F.fastq.gz", sep=""), mode=mode, compress=T)
+      writeFastq(sr2_trim, file=paste(outputFile, "_R.fastq.gz", sep=""), mode=mode, compress=T)
+
+      mode <- "a"
+      filteredReads <- filteredReads + length(sr1_trim)
+    }
+  }
+  close(f1)
+  close(f2)
+  suppressWarnings(rm(sr1, sr2, sr1_trim, sr2_trim))
+  gc()
+  gc()
+  message("done")
+  return(c(numReadIn=totalReads, numReadOut=filteredReads))
+}
+
+
+bindAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, read1Length, read2Length=read1Length){
+  
+  if(length(fastqFileR1) != length(fastqFileR2))
+    stop("Vector length of fastqFileR1 and fastqFileR2 not identical.")
+  
+  
+  lapply(seq_along(fastqFileR1), function(i){
+    message("Processing file", fastqFileR1[i], "and", fastqFileR2[i], sep=" ")
+    outputFile <- file.path(outputDir, sub("\\.fastq.gz", "", basename(fastqFileR1[i])))
+    
+    f1 <- FastqStreamer(fastqFileR1[i])
+    f2 <- FastqStreamer(fastqFileR2[i])
+    mode <- "w"
+    
+    while(length(sr1 <- yield(f1)) > 0){
+      sr2 <- yield(f2)
+      
+      sr1 <- narrow(sr1, start=1, width=ifelse(width(sr1)>=read1Length, read1Length, NA))
+      sr2 <- reverseComplement(narrow(sr2, start=1, width=ifelse(width(sr2)>=read2Length, read2Length, NA)))
+      
+      writeFastq(ShortReadQ(sread=xscat(sread(sr1), sread(sr2)), 
+                            qual=xscat(quality(quality(sr1)), quality(quality(sr2))), 
+                            id=id(sr1)), 
+                 file=paste(outputFile, "_bind", read1Length, "_", read2Length, ".fastq.gz", sep=""), mode=mode, compress=T)
+      mode <- "a"
+    }
+    close(f1)
+    close(f2)
+    rm(sr1, sr2)
+    gc()
+    gc()
+  })
+}
+
+extractSwarmClusterReads <- function(swarmFile, swarmRepresentativeFile, fastafile, outputDir){
+  require(Biostrings)
+  require(ShortRead)
+  prefix <- sub(".swarms","", basename(swarmFile))
+  outDir <- file.path(outputDir, prefix)
+  # i <- 1
+  lapply(seq_along(prefix), function(i){
+    dir.create(outDir[i])
+    rep <- readFasta(repfile[i])
+    hapInput <- readFasta(fastafile[i])
+    swarm <- readLines(swarmFile[i])
+    # j <- 1
+    mode <- "w"
+    lapply(seq_along(swarm), function(j){
+      hap <- strsplit(swarm[[j]], " ")[[1]]
+      idx <- id(hapInput) %in% hap
+      #as.character(id(rep[j]))
+      repFreq <- as.integer(strsplit(as.character(id(rep[j])), "_")[[1]][2])
+      if(repFreq>1){ # check frequencie
+        #aln <- pairwiseAlignment(hapInput[idx], sread(rep[j])) # patternQuality, subjectQuality
+        #nmismatch(aln)
+        #mismatchSummary(aln)
+        #nedit(aln)
+        #coverage(aln)
+        #consensusMatrix(aln)
+        #freq <- as.integer(do.call(rbind, strsplit(as.character(id(hapInput[idx])), "_"))[,2])
+        #consensusString(aln, ambiguityMap="N", threshold=0.51) == sread(rep[j])
+        writeFasta(hapInput[idx], file.path(outDir[i], paste(as.character(id(rep[j])), "fasta", sep=".")))
+      }else{
+        writeFasta(hapInput[idx], file.path(outDir[i], "singelton.fasta"), mode=mode)
+        mode <- "a"
+      }
+    })
+  })
+}
