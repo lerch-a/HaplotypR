@@ -87,9 +87,14 @@ demultiplexReads <- function(fastqFileFwd, fastqFileRev, barcodeFileFwd, barcode
 
 
 removePrimer <- function(fastqFileR1, fastqFileR2, outputFile, primerFwd, primerRev, 
-                          max.mismatch=0, with.indels=F, outputPrimerSequence=F){
+                          max.mismatch=0, with.indels=F, outputPrimerSequence=F, progressReport=message){
   
-  message("Processing file", fastqFileR1[i], "and", fastqFileR2[i], "...", sep=" ")
+  # check and set progress report function
+  if(!is.function(progressReport))
+    progressReport <- message
+  msg <- paste("Processing file", basename(fastqFileR1), "and", basename(fastqFileR2))
+  progressReport(detail=msg)
+
   if(length(fastqFileR1) != length(fastqFileR2))
     stop("Vector length of fastqFileR1 and fastqFileR2 not identical.")
   
@@ -143,8 +148,8 @@ removePrimer <- function(fastqFileR1, fastqFileR2, outputFile, primerFwd, primer
   suppressWarnings(rm(sr1, sr2, sr1_trim, sr2_trim))
   gc()
   gc()
-  message("done")
-  return(c(numReadIn=totalReads, numReadOut=filteredReads))
+  return(c(numReadIn=totalReads, numReadOut=filteredReads, 
+           FileR1=paste(outputFile, "_F.fastq.gz", sep=""), FileR2=paste(outputFile, "_R.fastq.gz", sep="")))
 }
 
 
