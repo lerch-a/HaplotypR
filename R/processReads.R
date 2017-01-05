@@ -1,12 +1,14 @@
 
-demultiplexReads <- function(fastqFileFwd, fastqFileRev, barcodeFileFwd, barcodeFileRev, outputDir, adapterFwd=NULL, adapterRev=NULL, max.mismatch=0, with.indels=F){
+demultiplexReads <- function(fastqFileFwd, fastqFileRev, barcodeFileFwd, barcodeFileRev, outputDir, adapterFwd=NULL, adapterRev=NULL, max.mismatch=0, with.indels=F, progressReport=message){
+  require(Biostrings)
+  require(ShortRead)
   
   # Read barcodes
-  barcodesFwd <- readDNAStringSet(barcodeFileFwd)
+  barcodesFwd <- Biostrings::readDNAStringSet(barcodeFileFwd)
   barcodesFwdLength <- unique(width(barcodesFwd))
   if(length(barcodesFwdLength)>1)
     stop("Barcodes length must have equal length.")
-  barcodesRev <- readDNAStringSet(barcodeFileRev)
+  barcodesRev <- Biostrings::readDNAStringSet(barcodeFileRev)
   barcodesRevLength <- unique(width(barcodesRev))
   if(length(barcodesRevLength)>1)
     stop("Barcodes length must have equal length.")  
@@ -14,14 +16,20 @@ demultiplexReads <- function(fastqFileFwd, fastqFileRev, barcodeFileFwd, barcode
   # check existing output files
   of <- list.files(path=outputDir, pattern=names(barcodesFwd))
   if(length(of)>0)
-    stop("Existing output files: ", paste(of, collapse=", "))
+    stop("Output directory must be empty. Found existing files: ", paste(of, collapse=", "))
   
+  # check and set progress report function
+  if(!is.function(progressReport))
+    progressReport <- message
+  
+  # Start demultiplexing
   f1 <- FastqStreamer(fastqFileFwd)
   f2 <- FastqStreamer(fastqFileRev)
   mode <- "w"
   countReads <- 0
   sumDemultiplex <- character(0)
-  message("Processing file ", fastqFileFwd, " and ", fastqFileRev, " ...")
+  msg <- paste("Processing file", basename(fastqFileFwd), "and", basename(fastqFileRev), ":")
+  progressReport(detail=msg)
   while(length(sr1 <- yield(f1)) > 0){
     sr2 <- yield(f2)
     countReads <- countReads + length(sr1)
@@ -42,8 +50,8 @@ demultiplexReads <- function(fastqFileFwd, fastqFileRev, barcodeFileFwd, barcode
       #sr1_trim <- narrow(sr1, start=fPrimEnd, width=ifelse(width(sr1)-fPrimEnd>=read1Length, read1Length, NA))
     }
     
-    idxFwd <- match(sread(sr1_trim), barcodesFwd)
-    idxRev <- match(sread(sr2_trim), barcodesRev)
+    idxFwd <- Biostrings::match(sread(sr1_trim), barcodesFwd)
+    idxRev <- Biostrings::match(sread(sr2_trim), barcodesRev)
     
     idx <- paste(names(barcodesFwd)[idxFwd], names(barcodesRev)[idxRev], sep="-")
     sumDemultiplex <- c(sumDemultiplex, idx)
@@ -57,13 +65,26 @@ demultiplexReads <- function(fastqFileFwd, fastqFileRev, barcodeFileFwd, barcode
     })
     
     mode <- "a"
-    message(countReads, " reads done ...")
+    progressReport(detail=paste(msg, countReads, "reads done ..."))
   }
-  message("... total demultiplexed reads:", countReads)
+  progressReport(detail=paste(msg, "finished, total" , countReads, "demultiplexed reads."))
   close(f1)
   close(f2)
-  table(sumDemultiplex)
+  
+  # Format output
+  tab <- as.data.frame(table(sumDemultiplex), stringsAsFactors=F)
+  colnames(tab) <- c("BarcodePair", "ReadNumbers")
+
+  outfiles <- list.files(outputDir)
+  names(outfiles) <- sub("_R..fastq.gz$", "", outfiles)
+  outFileR1 <- outfiles[grep("_R1.fastq.gz$", outfiles)][tab$BarcodePair]
+  outFileR2 <- outfiles[grep("_R2.fastq.gz$", outfiles)][tab$BarcodePair]
+  tab$FileR1 <- file.path(outputDir, outFileR1)
+  tab$FileR2 <- file.path(outputDir, outFileR2)
+
+  return(invisible(tab))
 }
+
 
 removePrimer <- function(fastqFileR1, fastqFileR2, outputFile, primerFwd, primerRev, 
                           max.mismatch=0, with.indels=F, outputPrimerSequence=F){
