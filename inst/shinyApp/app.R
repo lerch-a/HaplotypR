@@ -32,7 +32,7 @@ ui <- shinyUI(
              navbarMenu("Process Reads",
                         tabPanel("De-multiplex by Sample", demultiplexSample()),
                         tabPanel("De-multiplex by Marker", demultiplexMarker()),
-                        tabPanel("Join paired read")
+                        tabPanel("Concatenate Paired Reads", concatreads())
                         ),
              tabPanel("Call Genotypes"),
              tabPanel("Call Haplotypes"),
@@ -162,11 +162,13 @@ server <- shinyServer(function(input, output, session) {
   })
   output$table_dePlexM <- renderTable(truncPrim())
 
-
-  # 
-  # output$runTruncPrim <- eventReactive(input$startTruncPrim, { #observeEvent
-  #   runTruncatePrimer(input, output, session, volumes)
-  # })
+  ### Demultiplex by Marker Tab 
+  # Action
+  concatReads <- eventReactive(input$startConcatReads, {
+    runConcatReads(input, output, session, volumes)
+  })
+  output$table_concat <- renderTable(concatReads())
+  
   
 })
 

@@ -148,35 +148,53 @@ removePrimer <- function(fastqFileR1, fastqFileR2, outputFile, primerFwd, primer
   suppressWarnings(rm(sr1, sr2, sr1_trim, sr2_trim))
   gc()
   gc()
-  return(c(numReadIn=totalReads, numReadOut=filteredReads, 
+  if(filteredReads==0)
+    return(c(numReadIn=totalReads, numReadOut=filteredReads, FileR1=NA, FileR2=NA))
+  else
+    return(c(numReadIn=totalReads, numReadOut=filteredReads, 
            FileR1=paste(outputFile, "_F.fastq.gz", sep=""), FileR2=paste(outputFile, "_R.fastq.gz", sep="")))
 }
 
 
-bindAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, read1Length, read2Length=read1Length){
+bindAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, read1Length=NULL, read2Length=read1Length, progressReport=message){
   
   if(length(fastqFileR1) != length(fastqFileR2))
     stop("Vector length of fastqFileR1 and fastqFileR2 not identical.")
   
   
-  lapply(seq_along(fastqFileR1), function(i){
-    message("Processing file", fastqFileR1[i], "and", fastqFileR2[i], sep=" ")
+  tab <- lapply(seq_along(fastqFileR1), function(i){
+    
+    # check and set progress report function
+    if(!is.function(progressReport))
+      progressReport <- message
+    msg <- paste("Processing file", basename(fastqFileR1[i]), "and", basename(fastqFileR2[i]))
+    progressReport(detail=msg, value=i)
+    
     outputFile <- file.path(outputDir, sub("\\.fastq.gz", "", basename(fastqFileR1[i])))
+    outputFile <- paste(outputFile, "_bind", read1Length, "_", read2Length, ".fastq.gz", sep="")
     
     f1 <- FastqStreamer(fastqFileR1[i])
     f2 <- FastqStreamer(fastqFileR2[i])
     mode <- "w"
+    numReads <- 0
     
     while(length(sr1 <- yield(f1)) > 0){
       sr2 <- yield(f2)
+      numReads <- numReads+length(sr1)
       
-      sr1 <- narrow(sr1, start=1, width=ifelse(width(sr1)>=read1Length, read1Length, NA))
-      sr2 <- reverseComplement(narrow(sr2, start=1, width=ifelse(width(sr2)>=read2Length, read2Length, NA)))
+      if(!is.null(read1Length))
+        sr1 <- narrow(sr1, start=1, width=ifelse(width(sr1)>=read1Length, read1Length, NA))
+      
+      if(!is.null(read2Length))
+        sr2 <- reverseComplement(narrow(sr2, start=1, width=ifelse(width(sr2)>=read2Length, read2Length, NA)))
+      else
+        sr2 <- reverseComplement(sr2)
+        
       
       writeFastq(ShortReadQ(sread=xscat(sread(sr1), sread(sr2)), 
                             qual=xscat(quality(quality(sr1)), quality(quality(sr2))), 
                             id=id(sr1)), 
-                 file=paste(outputFile, "_bind", read1Length, "_", read2Length, ".fastq.gz", sep=""), mode=mode, compress=T)
+                 file=outputFile, mode=mode, compress=T)
       mode <- "a"
     }
     close(f1)
@@ -184,7 +202,13 @@ bindAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, read1Length, 
     rm(sr1, sr2)
     gc()
     gc()
+    if(numReads==0)
+      return(NULL)
+    else
+      return(c(numRead=numReads, ReadFile=outputFile))
   })
+  tab <- do.call(rbind, tab)
+  return(tab)
 }
 
 extractSwarmClusterReads <- function(swarmFile, swarmRepresentativeFile, fastafile, outputDir){

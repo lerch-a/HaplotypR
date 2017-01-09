@@ -187,7 +187,76 @@ runTruncatePrimer <- function(input, output, session, volumes){
     cbind(BarcodePair=as.character(dePlexFiles$BarcodePair), MarkerID=mID, do.call(rbind, res))
   })
   res <- do.call(rbind, res)
+  res <- cbind(dePlexFiles[,c("SampleID","BarcodePair", "MarkerID")], res)
+  
   write.table(res, file.path(out, "demultiplexMarkerSummary.txt"), sep="\t", row.names=F)
+  
+  return(res)
+}
+
+
+
+runConcatReads <- function(input, output, session, volumes){
+  
+  # Options
+  wTrim <- isolate(input$withTrim)
+  if(!wTrim){
+    numNtF <- NULL
+    numNtR <- NULL
+  }else{
+    numNtF <- isolate(input$trim_F)
+    numNtR <- isolate(input$trim_F)
+  }
+  
+  # Output dir
+  out <- isolate(parseDirPath(volumes, input$dirOut))
+  if(is.null(out)){
+    showNotification("Output Directory missing", closeButton = T, type="error")
+    return(NULL)
+  }
+
+  # Demultiplexed sample files
+  outDePlexMarker <- file.path(out, "demultiplexMarkerSummary.txt")
+  if(file.exists(outDePlexMarker)){
+    dePlexFiles <- read.delim(outDePlexMarker)
+  }else{
+    showNotification("Input missing", closeButton = T, type="error")
+    return(NULL)
+  }
+  dePlexFiles <- dePlexFiles[!is.na(dePlexFiles$FileR1),]
+  
+  # Output dir
+  outCleanReads <- file.path(out, "processedReads")
+  if(!file.exists(outCleanReads)){
+    dir.create(outCleanReads)
+  }
+  # else{
+  #   showNotification("Output dir exists", closeButton = T, type="error")
+  #   return(NULL)
+  # }
+  
+  # Configure shiny progress
+  progress <- Progress$new(session, min=0, max=length(dePlexFiles$FileR1))
+  on.exit(progress$close())
+  progress$set(message=sprintf('Concatenation of reads in progress. This may take a while...'), detail=NULL, value=0)
+  
+  updateProgress <- function(detail=NULL, value=NULL){
+    progress$set(detail=detail, value=value)
+  }
+  
+  # Run
+  #res <- lapply(seq_along(dePlexFiles$FileR1), function(i){
+    #progress$set(message=sprintf('Concatenation of reads in progress. This may take a while...'), detail=NULL, value=i)
+    #outputFile <- file.path(outCleanReads, mID, sub("R1\\.fastq.gz", mID, basename(as.character(dePlexFiles$FileR1)[i])))
+  res <- bindAmpliconReads(as.character(dePlexFiles$FileR1), as.character(dePlexFiles$FileR2), outCleanReads, 
+                      read1Length=numNtF, read2Length=numNtR, progressReport=updateProgress)
+  #})
+#    cbind(BarcodePair=as.character(dePlexFiles$BarcodePair), MarkerID=mID, do.call(rbind, res))
+  #res <- do.call(rbind, res)
+  
+  res <- cbind(dePlexFiles[,c("SampleID", "BarcodePair", "MarkerID")], res)
+  
+  write.table(res, file.path(out, "processedReadSummary.txt"), sep="\t", row.names=F)
   
   return(res)
 }
