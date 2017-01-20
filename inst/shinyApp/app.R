@@ -21,21 +21,20 @@ source("guiHelper.R")
 # Define UI for application 
 ui <- shinyUI(
   navbarPage("HaplotypR", theme='haplotypRstyle.css',
-             tabPanel("Home", homepage()),
+             tabPanel("Home", homepage()), #tabPanel("Project Information"),
              tabPanel("Input", setinput()),
              navbarMenu("Views",
                         tabPanel("Sample List", viewSampleList()),
                         tabPanel("Marker List", viewMarkerList())
                         ),
-             #tabPanel("Project Information"),
              #tabPanel("Quality Control"),
              navbarMenu("Process Reads",
                         tabPanel("De-multiplex by Sample", demultiplexSample()),
                         tabPanel("De-multiplex by Marker", demultiplexMarker()),
                         tabPanel("Concatenate Paired Reads", concatreads())
                         ),
-             tabPanel("Call Genotypes"),
-             tabPanel("Call Haplotypes"),
+             tabPanel("Call Genotypes", callgenotype()),
+             tabPanel("Call Haplotypes", callhaplotype()),
              #tabPanel("Settings")
              tabPanel("Help")
   )
@@ -44,132 +43,261 @@ ui <- shinyUI(
 # Define server logic 
 server <- shinyServer(function(input, output, session) {
   source("serverHelper.R", local=TRUE)
-  volumes <- c(Home='/Users/anitalerch/CloudStation/Documents/PhD/Data/files_duplicate/amplicon/') # getVolumes()
-  
-  change <- reactiveValues(config=0)
-  config <- list(cTest="empty", fnReadsR1=NULL, fnReadsR2=NULL, fnBarcodeF=NULL, fnBarcodeR=NULL, 
-                           linkerF=NULL, linkerR=NULL, fnPrimer=NULL, rootVolumes=volumes, outputDir=NULL)
-  
-  ## Set Input Tab
-  # output$inputDyn <- renderUI({
-  #   textInput(inputId = "dynamic", label ="Dynlab" ,value="3")
+  #volumes <- getVolumes()
+  volumes <- c(Home='~')
+  # volumes <- reactive({
+  #   if(change$config>0){
+  #     vol <- config$rootVolumes
+  #     browser()
+  #     names(vol) <- names(config$rootVolumes)
+  #     return(vol)
+  #   }
+  #   return(c(Home='~'))
   # })
-  # observeEvent(input$iTest, { 
-  #   config$cTest <- isolate(input$iTest)
-  #   browser()
-  #   change$config <- change$config+1
-  #   })
-  # output$oTest <- renderText({if(!is.null(change$config))
-  #   return(config$cTest) })
+
+  change <- reactiveValues(config=0)
+  config <- list(fnReadR1=NULL, fnReadR2=NULL, fnBarcodeF=NULL, fnBarcodeR=NULL,
+                           fnPrimer=NULL, rootVolumes=volumes, outputDir=NULL)
+
+  ### Input Tab
   shinyFileSave(input, 'saveConfig', roots=volumes, session=session)
-  observeEvent(input$saveConfig, { 
-    configVar <- c("fileR1", "fileR2", "fileB1", "fileB2", "linkerF", "linkerR", "fileP1", "dirOut")
-    configLst <- lapply(configVar, function(n) { isolate(input[[n]]) })
-    names(configLst) <- configVar
-    configVar$rootVolumes <- volumes
+  observeEvent(input$saveConfig, {
+    configLst <- list(fileR1=isolate(input$fileR1), fileR2=isolate(input$fileR2),
+                      fileB1=isolate(input$fileB1), fileB2=isolate(input$fileB2),
+                      fileP1=isolate(input$fileP1), fileSample=isolate(input$fileSample),
+                      dirOut=isolate(input$dirOut))
+    configLst$rootVolumes <- volumes
     saveRDS(configLst, file=as.character(parseSavePath(volumes, input$saveConfig)$datapath))
   })
   shinyFileChoose(input, 'loadConfig', roots=volumes, session=session)
   observeEvent(input$loadConfig, {
     configLst <- readRDS(as.character(parseFilePaths(volumes, input$loadConfig)$datapath))
-    lapply(names(configLst), function(n) { input[[n]] <- configLst[[n]] })
+    lapply(names(configLst), function(n) { config[[n]] <<- configLst[[n]] })
+    change$config <- change$config+1
   })
   shinyFileChoose(input, 'fileR1', roots=volumes, session=session)
   shinyFileChoose(input, 'fileR2', roots=volumes, session=session)
   shinyFileChoose(input, 'fileB1', roots=volumes, session=session)
-  shinyFileChoose(input, 'fileB2', roots=volumes, session=session) 
+  shinyFileChoose(input, 'fileB2', roots=volumes, session=session)
   shinyFileChoose(input, 'fileP1', roots=volumes, session=session)
   shinyFileChoose(input, 'fileSample', roots=volumes, session=session)
   shinyDirChoose(input, 'dirOut', roots=volumes, session=session)
-  # config$fnReadR1 <- renderText({browser()
-  #   paste(".", paste(input$fileR1$files[[1]], collapse = "/"), sep="")})
-  # config$fnReadR2 <- observeEvent(parseFilePaths(volumes, input$fileR2)$datapath)
-  # config$fnBarcodeF <- observeEvent(parseFilePaths(volumes, input$fileB1)$datapath)
-  # config$fnBarcodeR <- observeEvent(parseFilePaths(volumes, input$fileB2)$datapath)
-  # config$outputDir <- observeEvent(parseDirPath(volumes, input$dirOut))
-  # config$linkerF <- input$linkerF
-  # config$linkerR <- input$linkerF
-  # config$fnPrimer <- observeEvent(parseFilePaths(volumes, input$fileP1)$datapath)
-  output$filepathsR1 <- renderText({ ifelse(is.null(input$fileR1), "Select forward read file", 
-                                            paste(".", paste(input$fileR1$files[[1]], collapse = "/"), sep=""))})  
-  output$filepathsR2 <- renderText({ ifelse(is.null(input$fileR2), "Select reverse read file", 
-                                            paste(".", paste(input$fileR2$files[[1]], collapse = "/"), sep=""))})
-  output$filepathsB1 <- renderText({ ifelse(is.null(input$fileB1), "Select forward barcode file", 
-                                            paste(".", paste(input$fileB1$files[[1]], collapse = "/"), sep=""))})
-  output$filepathsB2 <- renderText({ ifelse(is.null(input$fileB2), "Select reverse barcode file", 
-                                            paste(".", paste(input$fileB2$files[[1]], collapse = "/"), sep=""))})
-  output$filepathsP1 <- renderText({ ifelse(is.null(input$fileP1), "Select primer file", 
-                                            paste(".", paste(input$fileP1$files[[1]], collapse = "/"), sep=""))})
-  output$filepathsSample <- renderText({ ifelse(is.null(input$fileSample), "Select sample file", 
-                                            paste(".", paste(input$fileSample$files[[1]], collapse = "/"), sep=""))})
-  output$linkerF <- renderText(input$linkerF)
-  output$linkerR <- renderText(input$linkerR)
-  output$dirpathOut <- renderText({ ifelse(is.null(input$dirOut), "Select output directory",
-                                                 paste(".", paste(input$dirOut$path, collapse = "/"), sep=""))})
-  
   shinyFileSave(input, 'createSampleFile', roots=volumes, session=session)
-  observeEvent(input$createSampleFile, { 
+  # config$fnReadR1 <- observeEvent(input$fileR1, { return(isolate(input$fileR1)) })
+  fileR1 <- reactive({
+    if(change$config>0) return(paste(".", paste(config$fileR1$files[[1]], collapse = "/"), sep=""))
+    if(is.null(input$fileR1)) return(NULL)
+    return(paste(".", paste(input$fileR1$files[[1]], collapse = "/"), sep=""))
+  })
+  fileR2 <- reactive({
+    if(change$config>0) return(paste(".", paste(config$fileR2$files[[1]], collapse = "/"), sep=""))
+    if(is.null(input$fileR2)) return(NULL)
+    return(paste(".", paste(input$fileR2$files[[1]], collapse = "/"), sep=""))
+  })
+  fileB1 <- reactive({
+    if(change$config>0) return(paste(".", paste(config$fileB1$files[[1]], collapse = "/"), sep=""))
+    if(is.null(input$fileB1)) return(NULL)
+    return(paste(".", paste(input$fileB1$files[[1]], collapse = "/"), sep=""))
+  })
+  fileB2 <- reactive({
+    if(change$config>0) return(paste(".", paste(config$fileB2$files[[1]], collapse = "/"), sep=""))
+    if(is.null(input$fileB2)) return(NULL)
+    return(paste(".", paste(input$fileB2$files[[1]], collapse = "/"), sep=""))
+  })
+  filePrimer <- reactive({
+    if(change$config>0) return(paste(".", paste(config$fileP1$files[[1]], collapse = "/"), sep=""))
+    if(is.null(input$fileP1)) return(NULL)
+    return(paste(".", paste(input$fileP1$files[[1]], collapse = "/"), sep=""))
+  })
+  fileSample <- reactive({
+    if(change$config>0) return(paste(".", paste(config$fileSample$files[[1]], collapse = "/"), sep=""))
+    if(is.null(input$fileSample)) return(NULL)
+    return(paste(".", paste(input$fileSample$files[[1]], collapse = "/"), sep=""))
+  })
+  dirOut <- reactive({
+    if(change$config>0) return(paste(".", paste(config$dirOut$path, collapse = "/"), sep=""))
+    if(is.null(input$dirOut)) return(NULL)
+    return(paste(".", paste(input$dirOut$path, collapse = "/"), sep=""))
+  })
+  observeEvent(input$createSampleFile, {
     lst <- createSampleFile(input, output, session, volumes)
     write.table(lst, file=as.character(parseSavePath(volumes, input$createSampleFile)$datapath), sep="\t", row.names=F)
   })
-  
-  ###Views
+  output$filepathsR1 <- renderText( ifelse(is.null(fileR1()), "Select forward read file", fileR1()))
+  output$filepathsR2 <- renderText( ifelse(is.null(fileR2()), "Select reverse read file", fileR2()))
+  output$filepathsB1 <- renderText( ifelse(is.null(fileB1()), "Select forward barcode file", fileB1()))
+  output$filepathsB2 <- renderText( ifelse(is.null(fileB2()), "Select reverse barcode file", fileB2()))
+  output$filepathsP1 <- renderText( ifelse(is.null(filePrimer()), "Select primer file", filePrimer()))
+  output$filepathsSample <- renderText( ifelse(is.null(fileSample()), "Select sample file", fileSample()))
+  output$dirpathOut <- renderText( ifelse(is.null(dirOut()), "Select output directory", dirOut()))
+
+  baseOutDir <- reactive({
+    if(is.null(dirOut())){
+      showNotification("Output Directory missing", closeButton = T, type="error")
+      return(NULL)
+    }
+    #out <- as.character(parseDirPath(volumes(), input$dirOut))
+    out <- sub(pattern = "/\\./", "/", file.path(volumes, dirOut()))
+    return(out)
+  })
+
+
+  ### Views
   sample <- reactive({
-    fnSample <- input$fileSample
-    if(is.null(fnSample)) return(data.frame())
-    data <- read.delim(as.character(parseFilePaths(volumes, input$fileSample)$datapath))
+    fnSample <- fileSample()
+    #fnSample <- "/Users/anitalerch/CloudStation/Documents/PhD/Data/files_duplicate/amplicon/tmpShinyApp/sampleLst.txt"
+    if(is.null(fnSample)){
+      showNotification("Sample file missing", closeButton = T, type="error")
+      return(NULL)
+    }
+    data <- read.delim(file.path(volumes, fileSample()))
     return(data)
   })
   output$sampleTable <- renderTable({ sample() })
+
   primer <- reactive({
-    fnPrimer <- input$fileP1
-    if(is.null(fnPrimer)) return(data.frame())
-    data <- read.delim(as.character(parseFilePaths(volumes, input$fileP1)$datapath))
-    return(data)
+    fnPrimer <- filePrimer()
+    if(is.null(fnPrimer)){
+      showNotification("Primer sequence missing", closeButton = T, type="error")
+      return(NULL) #return(data.frame()
+    }
+    fn <- sub("/\\./", "/", file.path(volumes, filePrimer()))
+    if(!file.exists(fn)){
+      showNotification("Primer sequence file not found", closeButton = T, type="error")
+      return(NULL)
+    }
+    return(read.delim(fn))
   })
   output$markerTable <- renderTable({ primer() })
-  
-  
-  ### Demultiplex by sample Tab 
-  output$fnR1_deplex <- renderText(paste(".", paste(input$fileR1$files[[1]], collapse = "/"), sep=""))
-  output$fnR2_deplex <- renderText(paste(".", paste(input$fileR2$files[[1]], collapse = "/"), sep=""))
-  output$fnB1_deplex <- renderText(paste(".", paste(input$fileB1$files[[1]], collapse = "/"), sep=""))
-  output$fnB2_deplex <- renderText(paste(".", paste(input$fileB2$files[[1]], collapse = "/"), sep=""))
-  output$fnS_deplex <- renderText(paste(".", paste(input$fileSample$files[[1]], collapse = "/"), sep=""))
-  shinyDirChoose(input, 'dirOutDePlex', roots=volumes, session=session)
-  output$dirpathOutDePlex <- renderText({ ifelse(is.null(input$dirOutDePlex), "Select output directory",
-                                                  paste(".", paste(input$dirOutDePlex$path, collapse = "/"), sep=""))})
-  # Action
-  resDePlex <- eventReactive(input$startDePlex, {
+
+
+  ### Demultiplex by sample Tab
+  output$fnR1_deplex <- renderText(fileR1()) # ifelse(is.null(fileR1()), "Go to menu 'Input' and select forward read file", fileR1())
+  output$fnR2_deplex <- renderText(fileR2())
+  output$fnB1_deplex <- renderText(fileB1())
+  output$fnB2_deplex <- renderText(fileB2())
+  output$fnS_deplex <- renderText(fileSample())
+  resDePlexS <- eventReactive(input$startDePlex, {
     runDemultiplex(input, output, session, volumes)
   })
+  # TODO check this function
   outDePlexSample <- reactive({
-    data <- isolate(resDePlex())
-    if(!is.null(outDePlexSample)) return(data)
-    data <- read.delim(file.path(out, "demultiplexSampleSummary.txt"))
-    return(data)
+    #data <- isolate(resDePlexS())
+    fn <- file.path(baseOutDir(), "demultiplexSampleSummary.txt")
+    if(!file.exists(fn)){
+      showNotification("Summary file of de-multiplex by sample is missing. Did you run this step?", closeButton = T, type="error")
+      return(NULL)
+    }
+    return(read.delim(fn))
   })
-  output$table_dePlexS <- renderTable({ resDePlex() })
+  output$table_dePlexS <- renderTable({ resDePlexS() })
+
   
-  ### Demultiplex by Marker Tab 
-  # shinyDirChoose(input, 'dirOutTruncPrim', roots=volumes, session=session)  
-  output$dirOutTruncPrim <- renderText({ ifelse(is.null(input$dirTruncPrim), "Select output directory",
-                                                  paste(".", paste(input$dirTruncPrim$path, collapse = "/"), sep=""))})
+  ### Demultiplex by Marker Tab
   output$primerTableDPM <- renderTable({ primer() })
-  # Action
-  truncPrim <- eventReactive(input$startTruncPrim, {
+  resDePlexM <- eventReactive(input$startTruncPrim, {
     runTruncatePrimer(input, output, session, volumes)
   })
-  output$table_dePlexM <- renderTable(truncPrim())
+  outDePlexMarker <- reactive({
+    #data <- isolate(resDePlexM())
+    fn <- file.path(baseOutDir(), "demultiplexMarkerSummary.txt")
+    if(!file.exists(fn)){
+      showNotification("Summary file of de-multiplex by marker is missing. Did you run this step?", closeButton = T, type="error")
+      return(NULL)
+    }
+    return(read.delim(fn))
+  })
+  output$table_dePlexM <- renderTable(resDePlexM())
 
-  ### Demultiplex by Marker Tab 
-  # Action
+  
+  ### Concatenate read Tab
   concatReads <- eventReactive(input$startConcatReads, {
     runConcatReads(input, output, session, volumes)
   })
+  outConcatReads <- reactive({
+    out <- baseOutDir()
+    if(is.null(out)) return(NULL)
+    fn <- file.path(out, "processedReadSummary.txt")
+    if(!file.exists(fn)){
+      showNotification("Summary file of concatenate paired reads is missing. Did you run this step?", closeButton = T, type="error")
+      return(NULL)
+    }
+    return(read.delim(fn))
+  })
   output$table_concat <- renderTable(concatReads())
+
   
+  ### marker selection
+  markerSelection <- reactive({
+    sampleTable <- outConcatReads()
+    if(is.null(sampleTable)) return(NULL)
+    mID <- c("none", as.character(unique(sampleTable$MarkerID)))
+    choiseMarker <- as.list(mID)
+    names(choiseMarker) <- mID
+    return(choiseMarker)
+  })
+
   
+  ### Call Genotyp Tab
+  output$uiMarkerSelectionG <- renderUI({
+    choiseMarker <- markerSelection()
+    if(is.null(choiseMarker)){ 
+      return(helpText("Summary file of concatenate paired reads not found. Did you run this step or is the ouput directory set?")) 
+    }
+    selectInput("markerSelectedG", label=NULL, choices=choiseMarker)
+  })
+  callGen <- eventReactive(input$startCallGenotyp, {
+    runCallGenotype(input, output, session, volumes)
+  })
+  outPotSNP <- reactive({
+    out <- isolate(baseOutDir())
+    if(is.null(out)) return(NULL)
+    marker <- input$markerSelectedG
+    if(is.null(marker)) return(NULL)
+    if(marker=="none") return(NULL)
+    fnSNP <- file.path(out, sprintf("potentialSNPlist_rate%.0f_occ%i_%s.txt", 
+                                    isolate(input$minMMrate)*100, 
+                                    isolate(input$minOccGen), 
+                                    marker))
+    if(!file.exists(fnSNP)){
+      showNotification("Input 'TODO_2' is missing. Did you run this step?", closeButton = T, type="error")
+      return(NULL)
+    }
+    potSNP <- read.delim(fnSNP)
+    return(potSNP)
+  })
+  outCallGen <- reactive({
+    #isolate(callGen())
+    out <- baseOutDir()
+    if(is.null(out)) return(NULL)
+    marker <- input$markerSelectedG
+    if(is.null(marker)) return(NULL)
+    if(marker=="none") return(NULL)
+    fnErr <- file.path(out, sprintf("mismatchRate_%s.txt", marker))
+    if(!file.exists(fnErr)){
+      #showNotification("Input 'TODO' is missing. Did you run this step?", closeButton = T, type="error")
+      return(NULL)
+    }
+    seqErr <- read.delim(fnErr)
+    potSNP <- isolate(outPotSNP())
+    return(list(seqErrors=seqErr, potentialSNP=potSNP))
+  })
+  output$plotMisMatch <- renderPlot({ plotGenotype(input, output, session, volumes) })
+
+  
+  ### Call Haplotyp Tab
+  output$uiMarkerSelectionH <- renderUI({
+    choiseMarker <- markerSelection()
+    if(is.null(choiseMarker)){ 
+      return(helpText("Summary file of concatenate paired reads is missing. Did you run this step?")) 
+    }
+    selectInput("markerSelectedH", label=NULL, choices=choiseMarker)
+  })
+  callHap <- eventReactive(input$startCallHaplotype, {
+    runCallHaplotype(input, output, session, volumes)
+  })
+  output$tableHaplotyps <- renderTable({callHap()})
+
 })
 
 # Run the application 

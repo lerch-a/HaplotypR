@@ -1,8 +1,13 @@
 
-calculateMismatchFrequencies <- function(fastqFiles, referenceSequence, excludeSNPList=NULL, minCoverage=50L, ...){
+calculateMismatchFrequencies <- function(fastqFiles, referenceSequence, excludeSNPList=NULL, minCoverage=50L, progressReport=message){
   
   seqErrC <- lapply(seq_along(fastqFiles), function(i){
-    message("Processing file", fastqFiles[i], "...", sep=" ")
+    # check and set progress report function
+    if(!is.function(progressReport))
+      progressReport <- message
+    msg <- paste("Processing file", basename(fastqFiles[i]), "...", sep=" ")
+    progressReport(detail=msg, value=i)
+    
     sr1 <- readFastq(fastqFiles[i])
     
     if(length(sr1)>=minCoverage){
@@ -12,11 +17,12 @@ calculateMismatchFrequencies <- function(fastqFiles, referenceSequence, excludeS
       
       seqErr <- tapply(mismatchSummary(aln1)$subject$Count, mismatchSummary(aln1)$subject$SubjectPosition, sum)
       
-      # exclude known FC27 snp
-      idx <- logical()
+      # exclude SNP from SNPList
       if(!is.null(excludeSNPList)){
         idx <- paste(mismatchSummary(aln1)$subject$Pattern, mismatchSummary(aln1)$subject$SubjectPosition) %in% 
-          paste(mismatchSummary(aln)$subject$Pattern, mismatchSummary(aln)$subject$SubjectPosition)
+          paste(excludeSNPList[,"Alt"], excludeSNPList[,"Pos"])
+      }else{
+        idx <- rep(F, length(mismatchSummary(aln1)$subject$Count))
       }
       
       seqErr <- tapply(mismatchSummary(aln1)$subject$Count[!idx], mismatchSummary(aln1)$subject$SubjectPosition[!idx], sum)
@@ -27,6 +33,12 @@ calculateMismatchFrequencies <- function(fastqFiles, referenceSequence, excludeS
     } else return(NULL)
   })
   names(seqErrC) <- fastqFiles
+  seqErrC
 
 }
 
+callGenotype <- function(mismatchRateTable, minMismatchRate=0.5, minReplicate=2){
+  potSNP <- rowSums(mismatchRateTable>minMismatchRate)>=minReplicate
+  potSNP <- seq_along(potSNP)[potSNP]
+  return(potSNP)
+}

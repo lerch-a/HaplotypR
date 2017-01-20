@@ -93,6 +93,10 @@ demultiplexSample <- function(){
                column(6, textOutput('fnB1_deplex')),
                column(6, textOutput('fnB2_deplex'))
              ),
+             h5("Options:"),
+             fluidRow(column(2, checkboxInput("withSampleName", label=NULL, value=FALSE)),
+                      column(10, h5(helpText("Use sample names for output filenames.")))
+             ),
              h5("Sample file:"),
              fluidRow(
                column(12, textOutput('fnS_deplex'))
@@ -102,9 +106,6 @@ demultiplexSample <- function(){
              #   column(2, shinyDirButton('dirOutDePlex', 'Browse...', 'Please select the output directory', FALSE)),
              #   column(10, textOutput("dirpathOutDePlex"))
              # ),
-             fluidRow(column(2, checkboxInput("withSampleName", label=NULL, value=FALSE)),
-                      column(10, h5(helpText("Use sample names for output filenames.")))
-             ),
              fluidRow(
                column(2, p(), actionButton("startDePlex", "Start ...")),
                column(10)
@@ -120,19 +121,8 @@ demultiplexMarker <- function(){
   fluidPage(
     titlePanel("De-Multiplex by Marker"),
     hr(),
-    # h5("Linker sequence:"),
-    # fluidRow(
-    #   column(6, textOutput('linkerF_rmprim')),
-    #   column(6, textOutput('linkerR_rmprim'))
-    # ),
     h5("Primer sequence selected:"),
     fluidRow(column(12, tableOutput('primerTableDPM'))),
-    # h5("Output directory:"),
-    # fluidRow(
-    #   #column(2, shinyDirButton('dirOutTruncPrim', 'Browse...', 'Please select the output directory', FALSE)),
-    #   column(6, textOutput("dirOutTruncPrim")),
-    #   column(6)
-    # ),
     h5("Options:"),
     fluidRow(
       column(2, numericInput("numMisMatch", label=NULL, value=2, min=0, step=1)),
@@ -148,5 +138,87 @@ demultiplexMarker <- function(){
     hr(),
     h4("Summary:"),
     fluidRow(column(12, tableOutput('table_dePlexM')))
+  )
+}
+
+concatreads <- function(){
+  fluidPage(
+    titlePanel("Concatenate Paired Reads"),
+    hr(),
+    h5("Options:"),
+    fluidRow(column(2, checkboxInput("withTrim", label=NULL, value=FALSE)),
+             column(10, h5(helpText("Trim reads.")))
+    ),
+    fluidRow(column(4, h5(helpText("Trim forward read to:"))),
+             column(2, numericInput("trim_F", label=NULL, value=200, min=25, step=1)),
+             column(4, h5(helpText("Trim reverse read to:"))),
+             column(2, numericInput("trim_R", label=NULL, value=200, min=25, step=1))
+    ),
+    fluidRow(column(2, actionButton("startConcatReads", "Start ...")),
+             column(10)
+    ),
+    hr(),
+    h4("Summary:"),
+    fluidRow(column(12, tableOutput('table_concat')))
+  )
+}
+
+
+callgenotype <- function(){
+  fluidPage(
+    titlePanel("Call Genotyps"),
+    hr(),
+    fluidRow(column(2, h5(helpText("Select Marker:"))),
+             column(10, uiOutput("uiMarkerSelectionG"))),
+    h5("Options:"),
+    fluidRow(column(2, numericInput("minMMrate", label=NULL, value=0.5, min=0.5, step=0.05)),
+             column(10, h5(helpText("Minimum mis-match rate to call SNP.")))
+    ),
+    fluidRow(column(2, numericInput("minOccGen", label=NULL, value=2, min=2, step=1)),
+             column(10, h5(helpText("Minimum genotype occurence above min mismatch rate to call SNP.")))
+    ),
+    fluidRow(
+      column(2, actionButton("startCallGenotyp", "Start ...")),
+      column(10)
+    ),
+    hr(),
+    h4("Plot Average Base Mis-Match Rate per sample:"),
+    helpText("(with respect to the reference sequence)"),
+    plotOutput('plotMisMatch')
+  )
+}
+
+
+callhaplotype <- function(){
+  fluidPage(
+    titlePanel("Call Haplotypes"),
+    hr(),
+    fluidRow(column(2, h5(helpText("Select Marker:"))),
+             column(10, uiOutput("uiMarkerSelectionH"))),
+    h5("Options:"),
+    fluidRow(column(1, checkboxInput("cChimera", label=NULL, value=TRUE)),
+             column(11, h5(helpText("Check for chimera.")))
+    ),
+    fluidRow(column(1, checkboxInput("cIndels", label=NULL, value=TRUE)),
+             column(11, h5(helpText("Check for indel.")))
+    ),
+    fluidRow(
+      column(4, h5(helpText("Minimum coverage per Haplotype:"))),
+      column(2, numericInput("minCoverage", label=NULL, value=10, min=3, step=1)),
+      column(4, h5(helpText("Maximum sensitivity:"))),
+      column(2, numericInput("maxSensitivity", label=NULL, value=1/1000, min=0))
+    ),
+    fluidRow(
+      column(4, h5(helpText("Minimum haplotype occurence:"))),
+      column(2, numericInput("minOccHap", label=NULL, value=2, min=1, step=1)),
+      column(6)
+    ),
+    fluidRow(
+      column(2, actionButton("startCallHaplotype", "Start ...")),
+      column(10)
+    ),
+    hr(),
+    h4("Summary:"),
+    tableOutput('tableHaplotyps')
   )
 }
