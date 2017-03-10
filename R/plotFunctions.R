@@ -25,7 +25,7 @@ plotMismatchFrequencies <- function(control, sample, filename, ...){
 
 plotHaplotypes <- function(allelCounts, sampleLable=colnames(allelCounts), title, minCoverage=3, maxSensitivity=1/1000){
   
-  allelCounts <- callHaplotypePerSample(allelCounts, sensitivity=maxSensitivity, minCoverage=minCoverage)
+  allelCounts <- callHaplotype(allelCounts, sensitivity=maxSensitivity, minCoverage=minCoverage)
   
   totalCoverage <- colSums(allelCounts)
    

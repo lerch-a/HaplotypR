@@ -146,8 +146,8 @@ concatreads <- function(){
     titlePanel("Concatenate Paired Reads"),
     hr(),
     h5("Options:"),
-    fluidRow(column(2, checkboxInput("withTrim", label=NULL, value=FALSE)),
-             column(10, h5(helpText("Trim reads.")))
+    fluidRow(column(1, checkboxInput("withTrim", label=NULL, value=FALSE)),
+             column(11, h5(helpText("Trim reads.")))
     ),
     fluidRow(column(4, h5(helpText("Trim forward read to:"))),
              column(2, numericInput("trim_F", label=NULL, value=200, min=25, step=1)),
@@ -202,9 +202,12 @@ callhaplotype <- function(){
     fluidRow(column(1, checkboxInput("cIndels", label=NULL, value=TRUE)),
              column(11, h5(helpText("Check for indel.")))
     ),
+    fluidRow(column(1, checkboxInput("fSNP", label=NULL, value=TRUE)),
+    				 column(11, h5(helpText("Use SNP.")))
+    ),
     fluidRow(
       column(4, h5(helpText("Minimum coverage per Haplotype:"))),
-      column(2, numericInput("minCoverage", label=NULL, value=10, min=3, step=1)),
+      column(2, numericInput("minCoverage", label=NULL, value=3, min=3, step=1)),
       column(4, h5(helpText("Maximum sensitivity:"))),
       column(2, numericInput("maxSensitivity", label=NULL, value=1/1000, min=0))
     ),

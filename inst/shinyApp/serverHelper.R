@@ -288,13 +288,13 @@ runCallGenotype <- function(input, output, session, volumes){
   }
   
   # Calculate mismatch rate
-  seqErrLst <- calculateMismatchFrequencies(as.character(sampleTable$ReadFile), refSeq, minCoverage=50L, progressReport=updateProgress)
+  seqErrLst <- calculateMismatchFrequencies(as.character(sampleTable$ReadFile), refSeq, minCoverage=100L, progressReport=updateProgress)
   names(seqErrLst) <- sampleTable$SampleID
   seqErr <- do.call(cbind, lapply(seqErrLst, function(l){
     l[,"MisMatch"]/l[,"Coverage"]
   }))
   write.table(seqErr, file.path(out, sprintf("mismatchRate_%s.txt", marker)), sep="\t", row.names=F)
-  
+
   potSNP <- callGenotype(seqErr, minMismatchRate=minMMrate, minReplicate=minOccGen)
   snpRef <- unlist(lapply(potSNP, function(snp){
     as.character(subseq(refSeq, start=snp, width=1))
@@ -304,33 +304,38 @@ runCallGenotype <- function(input, output, session, volumes){
                                                   minMMrate*100, minOccGen, marker)), 
               row.names=F, col.names=T, sep="\t", quote=F)
   
-  return(list(seqErrors=seqErr, potentialSNP=potSNP))
-}
-
-plotGenotype <- function(input, output, session, volumes){
-  genLst <- outCallGen()
-  if(is.null(genLst)) return(NULL)
-  matplot(genLst$seqErrors, type="p", pch=16, cex=0.4, col="#00000088", ylim=c(0, 1),
+  png(file.path(out, sprintf("plotMisMatchRatePerBase_rate%.0f_occ%i_%s.png", minMMrate*100, minOccGen, marker)), 
+      width=1500 , height=600)
+  matplot(seqErr, type="p", pch=16, cex=0.4, col="#00000088", ylim=c(0, 1),
+          ylab="Mismatch Rate", xlab="Base Position", main=marker, cex.axis=2, cex.lab=2)
+  abline(v=snpLst[,"Pos"], lty=2, col="grey")
+  abline(h=minMMrate, lty=1, col="red")
+  dev.off()
+#   return(list(seqErrors=seqErr, potentialSNP=potSNP))
+# }
+# 
+# plotGenotype <- function(input, output, session, volumes){
+  # genLst <- outCallGen()
+  # if(is.null(genLst)) return(NULL)
+  matplot(seqErr, type="p", pch=16, cex=0.4, col="#00000088", ylim=c(0, 1),
           ylab="Mismatch Rate", xlab="Base Position", cex.axis=1.5, cex.lab=1.5)
-  abline(v=genLst$potentialSNP$Pos, lty=2, col="grey")
+  abline(v=snpLst[,"Pos"], lty=2, col="grey")
+  abline(h=minMMrate, lty=1, col="red")
 }
 
-runCallHaplotype <- function(input, output, session, volumes){
-  browser()
+runCreateHaplotypOverview <- function(input, output, session, volumes){
   marker <- isolate(input$markerSelectedH)
   if(is.null(marker)) return(NULL)
   if(marker=="none"){
     showNotification("Select Marker", closeButton = T, type="error")
     return(NULL)
   }
-  # Options
-  minMMrate <- isolate(input$minCoverage)
-  maxSensitivity <- isolate(input$maxSensitivity)
-  minOccGen <- isolate(input$minOccHap)
+
   # Load sample
   sampleTable <- isolate(outConcatReads())
   sampleTable <- sampleTable[sampleTable$MarkerID == marker,]
-  sampleTable <- sampleTable[!(is.na(sampleTable$ReadFile) | is.na(sampleTable$SampleID)),]
+  sampleTable <- sampleTable[!is.na(sampleTable$ReadFile) & !is.na(sampleTable$SampleID),]
+  sampleTable <- sampleTable[grep("NA", sampleTable$BarcodePair, invert=T),]
   # Output dir
   out <- isolate(baseOutDir())
   outFreqReads <- file.path(out, "frequencyFiles")
@@ -338,109 +343,176 @@ runCallHaplotype <- function(input, output, session, volumes){
     dir.create(outFreqReads)
   }
   # SNP list
-  potSNPLst <- outPotSNP()
-  if(is.null(potSNPLst)){
-    showNotification("Potential SNP list is missing", closeButton = T, type="error")
-    return(NULL)
+  if(input$fSNP){
+	  potSNPLst <- outPotSNP()
+	  if(is.null(potSNPLst)){
+	    showNotification("Potential SNP list is missing. Did you run 'Call Genotype'?", closeButton = T, type="error")
+	    return(NULL)
+	  }
+  }else{
+  	potSNPLst <- NULL
   }
+  
+  # Configure shiny progress
+  progressMain <- Progress$new(session, min=0, max=8)
+  progressMain$set(message=sprintf('Call Haplotype is in progress. This may take a while...'), detail=NULL, value=1)
+  progress <- Progress$new(session, min=0, max=length(sampleTable$ReadFile))
+  on.exit({ 
+    progress$close()
+    progressMain$close()
+  })
+  progress$set(message=sprintf('Dereplication is in progress.'), detail=NULL, value=0)
+  updateProgress <- function(detail=NULL, value=NULL){
+    progress$set(detail=detail, value=value)
+  }
+  tab <- createContingencyTable(as.character(sampleTable$ReadFile), dereplicated=F, inputFormat="fastq", outputDir=outFreqReads,
+                               sampleNames=as.character(sampleTable$SampleID), replicatNames=NULL, 
+                               haplotypeUIDFile=NULL, progressReport=updateProgress)
+  #write.table(tab, file=file.path(out, "contingencyTable.txt"), sep="\t")
+  
+  fnAllSeq <- file.path(out, sprintf("allSequences_%s.fasta", marker))
+  file.rename(file.path(outFreqReads, "allHaplotypes.fa"), fnAllSeq)
 
-  tab <- createContingencyTable(as.character(sampleTable$FileR), dereplicated=F, inputFormat="fastq", outputDir=outFreqReads,
-                               sampleNames=as.character(sampleTable$SampleID), replicatNames="", 
-                               haplotypeUIDFile=NULL)
-  browser()
-  write.table(tab, file=file.path(out, "contingencyTable.txt"), sep="\t")
-  file.rename(file.path(outFreqReads, "allHaplotypes.fa"), file.path(out, "allSequences.fasta"))
-
-  frqfile <- list.files(outFreqReads, pattern="hapFreq.fa$", full.names=T)
+  frqfile <- file.path(outFreqReads, sub(".fastq.gz$", "_hapFreq.fa", basename(as.character(sampleTable$ReadFile))))
+  #frqfile <- list.files(outFreqReads, pattern="hapFreq.fa$", full.names=T)
   prefix <- sub("_hapFreq\\.fa", "", basename(frqfile))
   
   outCluster <- file.path(out, "cluster")
   if(!file.exists(outCluster)){
     dir.create(outCluster)
   }
+  outCluster <- file.path(outCluster, marker)
+  if(!file.exists(outCluster)){
+    dir.create(outCluster)
+  }
   
+  progressMain$set(value=2)
+  progress$set(message=sprintf('Read clustering is in progress.'), detail=NULL, value=0)
   # run cluster
-  clusterFilenames <- clusterReads(frqfile, outCluster, prefix)
-  
+  clusterFilenames <- clusterReads(frqfile, outCluster, prefix, progressReport=updateProgress)
+
   # check chimeras
+  progressMain$set(value=3)
   if(isolate(input$cChimera)){
-    chimeraFilenames <- checkChimeras(clusterFilenames[,"RepresentativeFile"], method="vsearch")
+    progress$set(message=sprintf('Check for chimera is in progress.'), detail=NULL, value=0)
+    chimeraFilenames <- checkChimeras(clusterFilenames[,"RepresentativeFile"], method="vsearch", progressReport=updateProgress)
   }else{
     chimeraFilenames <- NULL
   }
 
   # check indels
   if(isolate(input$cIndels)){
-    refSeq <- sub("^.*_bind", "_bind", as.character(sampleTable$FileR)[1])
+    refSeq <- sub("^.*_bind", "_bind", as.character(sampleTable$ReadFile)[1])
     refSeq <- sub("fastq.*$", "fasta", refSeq)
-    refSeq <- file.path(out, paste(marker, refSeq, sep="_"))
+    refSeq <- file.path(out, paste(marker, refSeq, sep=""))
     refSeq <- readDNAStringSet(refSeq, format="fasta")
   }else{
     refSeq <- NULL
   }
 
-  overviewHap <- createHaplotypOverviewTable(file.path(out, "allSequences.fasta"),
+  progressMain$set(value=4)
+  progress$set(message=sprintf('Create Haplotype Overview table in progress.'), detail="", value=length(sampleTable$ReadFile))
+  overviewHap <- createHaplotypOverviewTable(fnAllSeq,
                                              clusterFilenames, chimeraFilenames,
                                              refSeq, potSNPLst)
   
   ## Final Haplotype
+  progressMain$set(value=5)
   overviewHap$FinalHaplotype <- factor(NA, levels = c("Singelton", "Chimera", "Indels", marker))
   overviewHap[overviewHap$representatives, "FinalHaplotype"] <- marker
   overviewHap[overviewHap$singelton, "FinalHaplotype"] <- "Singelton"
-  overviewHap[!is.na(overviewHap$chimera) & is.na(overviewHap$nonchimera), "FinalHaplotype"] <- "Chimera"
-  overviewHap[!is.na(overviewHap$indels) & overviewHap$indels & overviewHap$representatives, "FinalHaplotype"] <- "Indels"
+  
+  if(input$cIndels){
+  	overviewHap[!is.na(overviewHap$indels) & overviewHap$indels & overviewHap$representatives, "FinalHaplotype"] <- "Indels"
+  }
+  
+  if(input$cChimera){
+  	#overviewHap[!is.na(overviewHap$chimera) & is.na(overviewHap$nonchimera), "FinalHaplotype"] <- "Chimera"
+  	overviewHap[!is.na(overviewHap$chimeraScore) & is.na(overviewHap$nonchimeraScore), "FinalHaplotype"] <- "Chimera"
+  }
 
+  idx <- overviewHap$FinalHaplotype %in% marker
+  if(input$fSNP){
+	  snpLst <- unique(overviewHap$snps[idx])
+	  names(snpLst) <- paste(marker, seq_along(snpLst), sep="-")
+	  levels(overviewHap$FinalHaplotype) <- c(levels(overviewHap$FinalHaplotype), names(snpLst))
+	  overviewHap$FinalHaplotype[idx] <- names(snpLst)[match(overviewHap$snps[idx], snpLst)]
+  }else{
+  	hapNames <- paste(marker, 1:sum(idx), sep="-")
+  	levels(overviewHap$FinalHaplotype) <- c(levels(overviewHap$FinalHaplotype), hapNames)
+  	overviewHap$FinalHaplotype[idx] <- hapNames
+  }
+  overviewHap <- as.data.frame(overviewHap)
   
+  progressMain$set(value=6)
+  write.table(overviewHap, file=file.path(out, sprintf("HaplotypeOverviewTable_%s.txt", marker)), sep="\t")
   
-  
-  # idx <- overviewHap$FinalHaplotype %in% marker
-  # snpLst <- unique(overviewHap$snps[idx])
-  # names(snpLst) <- paste(marker, seq_along(snpLst), sep="-")
-  # levels(overviewHap$FinalHaplotype) <- c(levels(overviewHap$FinalHaplotype), names(snpLst))
-  # overviewHap$FinalHaplotype[idx] <- names(snpLst)[match(overviewHap$snps[idx], snpLst)]
-  write.table(as.data.frame(overviewHap), file=file.path(out, "HaplotypeOverviewTable.txt"), sep="\t")
-  
-  # #write.table(overviewHap, file=file.path(outDir, "finalHaplotypeOverviewTable.txt"), sep="\t")
-  # overviewHap <- read.delim(file=file.path(outDir, "finalHaplotypeOverviewTable.txt"))
-  # 
-  # 
-  # #####
-  # # Count table repfile
-  # 
-  # repfile <- list.files(file.path(outDir, "cluster"), pattern="^[RDX].*representatives.fasta", full.names=T)
-  # 
-  # overviewHap <- read.delim(file.path(outDir, "finalHaplotypeOverviewTable.txt"))
-  # 
-  # hab <- rep(0, dim(overviewHap)[1])
-  # names(hab) <- rownames(overviewHap)
-  # 
-  # haplotypesSample <- lapply(seq_along(repfile), function(i){
-  #   sr1 <- readFasta(repfile[i])
-  #   vec <- do.call(rbind, strsplit(as.character(id(sr1)), "_"))
-  #   clusterResp <- vec[,1]
-  #   clusterSize <- as.integer(vec[,2])
-  #   hab[clusterResp] <- clusterSize
-  #   hab
-  # })
-  # haplotypesSample <- do.call(cbind, haplotypesSample)
-  # haplotypesSample <- haplotypesSample[rowSums(haplotypesSample)>0,]
-  # colnames(haplotypesSample) <- sub(".representatives.fasta", "", basename(repfile))
-  # dim(haplotypesSample)
-  # 
-  # overviewHap <- overviewHap[rownames(haplotypesSample),]
-  # dim(overviewHap)
-  # head(overviewHap)
-  # table(overviewHap$representatives)
-  # table(overviewHap[, "FinalHaplotype"])
-  # 
-  # # set final haplotype names
-  # rownames(haplotypesSample) <- overviewHap[rownames(haplotypesSample), "FinalHaplotype"]
-  # 
-  # # recluster
-  # dim(haplotypesSample)
-  # haplotypesSample <- reclusterHaplotypesTable(haplotypesSample)
-  # dim(haplotypesSample)
-  # 
+#   return(overviewHap)
+# }
+# 
+# runCallHaplotype  <- function(input, output, session, volumes){
 
-  data.frame(Test=1)
+  # Options
+  minCov <- isolate(input$minCoverage)
+  maxSensitivity <- isolate(input$maxSensitivity)
+  minOccHap <- isolate(input$minOccHap)
+  
+  # marker <- isolate(input$markerSelectedH)
+  # out <- isolate(baseOutDir())
+  
+  #####
+  # Count table repfile
+  progressMain$set(value=7)
+  repfile <- clusterFilenames[,"RepresentativeFile"]
+
+  hab <- rep(0, dim(overviewHap)[1])
+  names(hab) <- rownames(overviewHap)
+
+  haplotypesSample <- lapply(seq_along(repfile), function(i){
+    sr1 <- readFasta(repfile[i])
+    vec <- do.call(rbind, strsplit(as.character(id(sr1)), "_"))
+    clusterResp <- vec[,1]
+    clusterSize <- as.integer(vec[,2])
+    hab[clusterResp] <- clusterSize
+    hab
+  })
+  haplotypesSample <- do.call(cbind, haplotypesSample)
+  haplotypesSample <- haplotypesSample[rowSums(haplotypesSample)>0,]
+  colnames(haplotypesSample) <- sub(".representatives.fasta", "", basename(repfile))
+
+  overviewHap <- overviewHap[rownames(haplotypesSample),]
+
+  # set final haplotype names
+  rownames(haplotypesSample) <- overviewHap[rownames(haplotypesSample), "FinalHaplotype"]
+  haplotypesSample <- reclusterHaplotypesTable(haplotypesSample)
+  write.table(cbind(HaplotypNames=rownames(haplotypesSample),haplotypesSample), 
+  						file=file.path(out, sprintf("rawHaplotypeTable_%s.txt", marker)), sep="\t", row.names=F, col.names=T)
+  
+  # Apply cut-off haplotype only in 1 sample
+  haplotypesSample <- callHaplotype(haplotypesSample, minCoverage=minCov, minReplicate=minOccHap, 
+                                    maxSensitivity=maxSensitivity, reportBackground=T)
+
+  #haplotypesSample <- as.data.frame(cbind(HaplotypNames=rownames(haplotypesSample), haplotypesSample))
+  #haplotypesSample <- reclusterHaplotypesTable(haplotypesSample)
+  progressMain$set(value=7)
+  write.table(cbind(HaplotypNames=rownames(haplotypesSample), haplotypesSample), 
+  						file=file.path(out, sprintf("finalHaplotypeTable_mcov%.0f_occ%i_sens%.4f_%s.txt", minCov, minOccHap, maxSensitivity, marker)), 
+  													 sep="\t", row.names=F, col.names=T)
+  
+  lst <- lapply(1:dim(haplotypesSample)[2], function(i){
+    tab <- callHaplotype(haplotypesSample[,i, drop=F], minCoverage=minCov, minReplicate=1, 
+                  maxSensitivity=maxSensitivity, reportBackground=T)
+    tab <- cbind(sampleTable[i,c("SampleID","MarkerID")], Haplotype=rownames(tab), Reads=as.integer(tab))
+    colnames(tab) <- c("SampleID","MarkerID","Haplotype","Reads")
+    return(tab)
+  })
+  lst <- do.call(rbind, lst)
+  write.table(lst, 
+  						file=file.path(out, sprintf("finalHaplotypeList_mcov%.0f_occ%i_sens%.4f_%s.txt", minCov, minOccHap, maxSensitivity, marker)), 
+  						sep="\t", row.names=F, col.names=T)
+  
+  
+  progressMain$set(value=8)
+  #return(as.data.frame(cbind(HaplotypNames=rownames(haplotypesSample))))
+  return(as.data.frame(lst))
 }

@@ -1,1 +1,9 @@
+
+import(methods)
+import(BiocGenerics)
+import(S4Vectors)
+import(Biostrings)
+import(ShortRead)
+import(BiocParallel)
+
 exportPattern("^[[:alpha:]]+")

@@ -252,7 +252,7 @@ server <- shinyServer(function(input, output, session) {
   outPotSNP <- reactive({
     out <- isolate(baseOutDir())
     if(is.null(out)) return(NULL)
-    marker <- input$markerSelectedG
+    marker <- input$markerSelectedH
     if(is.null(marker)) return(NULL)
     if(marker=="none") return(NULL)
     fnSNP <- file.path(out, sprintf("potentialSNPlist_rate%.0f_occ%i_%s.txt", 
@@ -282,8 +282,8 @@ server <- shinyServer(function(input, output, session) {
     potSNP <- isolate(outPotSNP())
     return(list(seqErrors=seqErr, potentialSNP=potSNP))
   })
-  output$plotMisMatch <- renderPlot({ plotGenotype(input, output, session, volumes) })
-
+  #output$plotMisMatch <- renderPlot({ plotGenotype(input, output, session, volumes) })
+  output$plotMisMatch <- renderPlot({ callGen() })
   
   ### Call Haplotyp Tab
   output$uiMarkerSelectionH <- renderUI({
@@ -293,11 +293,55 @@ server <- shinyServer(function(input, output, session) {
     }
     selectInput("markerSelectedH", label=NULL, choices=choiseMarker)
   })
-  callHap <- eventReactive(input$startCallHaplotype, {
-    runCallHaplotype(input, output, session, volumes)
+  createHapTab <- eventReactive(input$startCallHaplotype, {
+    runCreateHaplotypOverview(input, output, session, volumes)
   })
-  output$tableHaplotyps <- renderTable({callHap()})
+  #runCreateHaplotypOverview(input, output, session, volumes)
+  #runCallHaplotype(input, output, session, volumes)
 
+  # outHapOview <- reactive({
+  #   browser()
+  #   #overviewHap <- isolate(createHapTab())
+  #   #if(!is.null(overviewHap)) return(overviewHap)
+  #   out <- baseOutDir()
+  #   if(is.null(out)) return(NULL)
+  #   marker <- input$markerSelectedH
+  #   if(is.null(marker)) return(NULL)
+  #   if(marker=="none") return(NULL)
+  #   fnHab <- file.path(out, sprintf("HaplotypeOverviewTable_%s.txt", marker))
+  #   if(!file.exists(fnHab)){
+  #     #showNotification("Input 'TODO' is missing. Did you run this step?", closeButton = T, type="error")
+  #     overviewHap <- runCreateHaplotypOverview(input, output, session, volumes)
+  #   }else{
+  #     overviewHap <- read.delim(fnHab)
+  #   }
+  #   return(overviewHap)
+  # })
+  # outHapTab <- reactive({
+  #   browser()
+  #   #isolate(createHapTab())
+  #   out <- baseOutDir()
+  #   if(is.null(out)) return(NULL)
+  #   marker <- input$markerSelectedH
+  #   if(is.null(marker)) return(NULL)
+  #   if(marker=="none") return(NULL)
+  #   fnHab <- file.path(out, sprintf("finalHaplotypeTable_%s.txt", marker))
+  #   if(!file.exists(fnHab)){
+  #     #haplotypesSample <- runCallHaplotype(input, output, session, volumes)
+  #     #showNotification("Input 'TODO' is missing. Did you run this step?", closeButton = T, type="error")
+  #     return(NULL)
+  #   }else{
+  #     haplotypesSample <- read.delim(fnHab)
+  #   }
+  #   return(haplotypesSample)
+  # })
+  output$tableHaplotyps <- renderTable({ createHapTab() })
+
+  # ### Views Haplotyp
+  # output$overviewHap <- renderTable({ outHapOview() })
+  # output$haplotypesSample <- renderTable({ outHapTab() })
+  
+  
 })
 
 # Run the application 

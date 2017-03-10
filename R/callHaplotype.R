@@ -1,7 +1,11 @@
 
-createContingencyTable <- function(inputFiles, dereplicated=F, inputFormat="fasta", outputDir=".", sampleNames, replicatNames, freqSplitPattern="_", haplotypeUIDFile=NULL){
+createContingencyTable <- function(inputFiles, dereplicated=F, inputFormat="fasta", outputDir=".", sampleNames, replicatNames=NULL, freqSplitPattern="_", haplotypeUIDFile=NULL, progressReport=message){
   require(ShortRead)
+  require(Biostrings)
   
+  if(is.null(replicatNames))
+    replicatNames <- rep("", length(sampleNames))
+
   env <- environment()
   env$allHaplotypes <- DNAStringSet()
   if(!is.null(haplotypeUIDFile)){
@@ -10,8 +14,14 @@ createContingencyTable <- function(inputFiles, dereplicated=F, inputFormat="fast
     names(env$allHaplotypes) <- id(allHap)
     rm(allHap)
   } 
-  
+
   contingencyList <- lapply(seq_along(inputFiles), function(i){
+    
+    # check and set progress report function
+    if(!is.function(progressReport))
+      progressReport <- message
+    msg <- paste("Processing file", basename(inputFiles[i]), "...", sep=" ")
+    progressReport(detail=msg, value=i)
     
     # load sequence reads
     if(inputFormat=="fasta")
@@ -31,24 +41,22 @@ createContingencyTable <- function(inputFiles, dereplicated=F, inputFormat="fast
     }
     
     # compare to all haplotypes, name haplotypes and add missing haplotypes to all haplotypes list
-    idx <- match(haplotypes, env$allHaplotypes)
+    idx <- Biostrings::match(haplotypes, env$allHaplotypes)
     inHapTab <- !is.na(idx)
     names(haplotypes)[inHapTab] <- names(env$allHaplotypes[idx[inHapTab]])
     names(haplotypes)[!inHapTab] <- paste("UID", seq_along(haplotypes[!inHapTab])+length(env$allHaplotypes), sep="")
     env$allHaplotypes <- append(env$allHaplotypes, haplotypes[!inHapTab])
     
-    #
-    #extractQualityPerHaplotype(haplotypes, inputReads, inputFiles[i])
-    
     # return haplotyps per file
     lst <- list(UID=names(haplotypes), Frequency=readFreq, sampleName=sampleNames[i], replicatName=replicatNames[i])
     
     names(haplotypes) <- paste(names(haplotypes), readFreq, sep=freqSplitPattern)
-    freqFilename <- file.path(outputDir, sprintf("%s_Rep%s_hapFreq.fa", sampleNames[i], replicatNames[i]))
+    #freqFilename <- file.path(outputDir, sprintf("%s%s_hapFreq.fa", sampleNames[i], replicatNames[i]))
+    freqFilename <- file.path(outputDir, sub(".fastq.gz","_hapFreq.fa", basename(inputFiles[i])))
     writeFasta(haplotypes, freqFilename)
     return(lst)
   })
-  names(contingencyList) <- sprintf("%s_Rep%s", sampleNames, replicatNames)
+  names(contingencyList) <- sprintf("%s%s", sampleNames, replicatNames)
   
   # return all haplotyps
   writeFasta(env$allHaplotypes, file.path(outputDir, "allHaplotypes.fa"))
@@ -67,35 +75,62 @@ createContingencyTable <- function(inputFiles, dereplicated=F, inputFormat="fast
   return(contingencyTable)
 }
 
-callHaplotypePerSample <- function(x, sensitivity=1/1000, minCoverage=3L, minReplicate=2, reportBackground=T) {
+callHaplotype <- function(x, detectability=1/100, minHaplotypCoverage=3, minReplicate=2, minSampleCoverage=300, reportBackground=T, defineBackground=NULL, ...) {
 
-  # # is sample replicated
-  # hasReplicat <- dim(x)[2]>1
+  # check minHaplotypCoverage argument
+  if(minHaplotypCoverage < 3){
+    arguments <- list(...)
+    if(any(is.null(arguments$overwriteMinCoverage), arguments$overwriteMinCoverage==F)){
+      stop("The minimum read coverage per Haplotype (= minHaplotypCoverage) must be at least 3. 
+           To overwrite this default minHaplotypCoverage setting see details section of manual.")
+    }
+  }
+  
+  # check defineBackground argument
+  if(is.null(defineBackground))
+    defineBackground <- c("Chimera", "Singelton", "Indels", "Cut-Off_Sample", "Cut-Off_Size")
+  
+ 	# remove low covarage sample
+  cov <- colSums(x)
+  idx <- cov>minSampleCoverage
+  if(all(!idx)){
+  	x[,idx] <- NA
+  	rownames(x) <- NA
+  	return(x[,idx])
+  }else{
+  	x[,idx] <- NA 
+  }
+
+  # sample replicated
+  minReplicate <- min(dim(x)[2], minReplicate)
   
   # remove haplotypes without reads
   x <- x[rowSums(x>0) > 0,,drop=F]
   
   # selected and remove filtered haplotype
-  idx <- rownames(x) %in% c("Chimera", "Singelton", "Indels", "Cut-Off_Sample", "Cut-Off_Size")
+  idx <- rownames(x) %in% defineBackground
   background <- x[idx,, drop=F]
   x <- x[!idx,, drop=F]
   
   # check for noise haplotype
-  minCov <- colSums(x)*sensitivity
-  minCov[minCov<minCoverage] <- minCoverage
-  noiseIdx <- rowSums(t(t(x)/minCov) >= 1) < minReplicate # only haplotypes present in both replicate
-  lowCnt <- colSums(x[noiseIdx,,drop=F])
-  x <- x[!noiseIdx,,drop=F]
+  minCov <- colSums(x)*detectability
+  minCov[minCov<minHaplotypCoverage] <- minHaplotypCoverage
+  if(dim(x)[1]>0){
+  	noiseIdx <- rowSums(t(t(x)/minCov) >= 1) < minReplicate # only haplotypes present in minimum replicates
+  	lowCnt <- colSums(x[noiseIdx,,drop=F])
+  	x <- x[!noiseIdx,,drop=F]
+  }else{
+  	lowCnt <- 0
+  }
   
   # add background to haplotyp counts
   if(reportBackground){
     if(dim(x)[1]>0)
       x <- rbind(Noise=lowCnt, background, x[order(rowSums(x)),,drop=F])
     else
-      x <- t(data.frame(Noise=lowCnt, background))
+    	x <- rbind(Noise=lowCnt, background)
   }
 
-  
   return(x)
 }
 
