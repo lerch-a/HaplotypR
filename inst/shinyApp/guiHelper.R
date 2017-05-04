@@ -208,13 +208,14 @@ callhaplotype <- function(){
     fluidRow(
       column(4, h5(helpText("Minimum coverage per Haplotype:"))),
       column(2, numericInput("minCoverage", label=NULL, value=3, min=3, step=1)),
-      column(4, h5(helpText("Maximum sensitivity:"))),
+      column(4, h5(helpText("Detection limit:"))),
       column(2, numericInput("maxSensitivity", label=NULL, value=1/1000, min=0))
     ),
     fluidRow(
       column(4, h5(helpText("Minimum haplotype occurence:"))),
       column(2, numericInput("minOccHap", label=NULL, value=2, min=1, step=1)),
-      column(6)
+      column(4, h5(helpText("Minimum Sample coverage:"))),
+      column(2, numericInput("minCovSample", label=NULL, value=50, min=3, step=1))
     ),
     fluidRow(
       column(2, actionButton("startCallHaplotype", "Start ...")),

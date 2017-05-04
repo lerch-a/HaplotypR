@@ -368,7 +368,8 @@ runCreateHaplotypOverview <- function(input, output, session, volumes){
   tab <- createContingencyTable(as.character(sampleTable$ReadFile), dereplicated=F, inputFormat="fastq", outputDir=outFreqReads,
                                sampleNames=as.character(sampleTable$SampleID), replicatNames=NULL, 
                                haplotypeUIDFile=NULL, progressReport=updateProgress)
-  #write.table(tab, file=file.path(out, "contingencyTable.txt"), sep="\t")
+  if(getAppOptionDevel())
+    write.table(tab, file=file.path(out, sprintf("contingencyTable_%s.txt", marker)), sep="\t")
   
   fnAllSeq <- file.path(out, sprintf("allSequences_%s.fasta", marker))
   file.rename(file.path(outFreqReads, "allHaplotypes.fa"), fnAllSeq)
@@ -456,6 +457,7 @@ runCreateHaplotypOverview <- function(input, output, session, volumes){
   minCov <- isolate(input$minCoverage)
   maxSensitivity <- isolate(input$maxSensitivity)
   minOccHap <- isolate(input$minOccHap)
+  minCovSample <- isolate(input$minCovSample)
   
   # marker <- isolate(input$markerSelectedH)
   # out <- isolate(baseOutDir())
@@ -485,30 +487,35 @@ runCreateHaplotypOverview <- function(input, output, session, volumes){
   # set final haplotype names
   rownames(haplotypesSample) <- overviewHap[rownames(haplotypesSample), "FinalHaplotype"]
   haplotypesSample <- reclusterHaplotypesTable(haplotypesSample)
-  write.table(cbind(HaplotypNames=rownames(haplotypesSample),haplotypesSample), 
-  						file=file.path(out, sprintf("rawHaplotypeTable_%s.txt", marker)), sep="\t", row.names=F, col.names=T)
+  if(getAppOptionDevel())
+    write.table(cbind(HaplotypNames=rownames(haplotypesSample),haplotypesSample), 
+              file=file.path(out, sprintf("rawHaplotypeTable_%s.txt", marker)), sep="\t", row.names=F, col.names=T)
+  #haplotypesSample <- reclusterHaplotypesTable(haplotypesSample)
   
   # Apply cut-off haplotype only in 1 sample
-  haplotypesSample <- callHaplotype(haplotypesSample, minCoverage=minCov, minReplicate=minOccHap, 
-                                    maxSensitivity=maxSensitivity, reportBackground=T)
+  
+  haplotypesSample <- callHaplotype(haplotypesSample, minHaplotypCoverage=minCov, minReplicate=minOccHap, 
+                                    detectability=maxSensitivity, minSampleCoverage=1, reportBackground=T)
 
   #haplotypesSample <- as.data.frame(cbind(HaplotypNames=rownames(haplotypesSample), haplotypesSample))
   #haplotypesSample <- reclusterHaplotypesTable(haplotypesSample)
   progressMain$set(value=7)
-  write.table(cbind(HaplotypNames=rownames(haplotypesSample), haplotypesSample), 
-  						file=file.path(out, sprintf("finalHaplotypeTable_mcov%.0f_occ%i_sens%.4f_%s.txt", minCov, minOccHap, maxSensitivity, marker)), 
+  if(getAppOptionDevel())
+    write.table(cbind(HaplotypNames=rownames(haplotypesSample), haplotypesSample), 
+  						file=file.path(out, sprintf("finalHaplotypeTable_Hcov%.0f_Scov%.0f_occ%i_sens%.4f_%s.txt", minCov, minCovSample, minOccHap, maxSensitivity, marker)), 
   													 sep="\t", row.names=F, col.names=T)
   
   lst <- lapply(1:dim(haplotypesSample)[2], function(i){
-    tab <- callHaplotype(haplotypesSample[,i, drop=F], minCoverage=minCov, minReplicate=1, 
-                  maxSensitivity=maxSensitivity, reportBackground=T)
+    tab <- callHaplotype(haplotypesSample[,i, drop=F], minHaplotypCoverage=minCov, 
+                         minReplicate=1, detectability=maxSensitivity, minSampleCoverage=minCovSample, 
+                         reportBackground=T)
     tab <- cbind(sampleTable[i,c("SampleID","MarkerID")], Haplotype=rownames(tab), Reads=as.integer(tab))
     colnames(tab) <- c("SampleID","MarkerID","Haplotype","Reads")
     return(tab)
   })
   lst <- do.call(rbind, lst)
   write.table(lst, 
-  						file=file.path(out, sprintf("finalHaplotypeList_mcov%.0f_occ%i_sens%.4f_%s.txt", minCov, minOccHap, maxSensitivity, marker)), 
+  						file=file.path(out, sprintf("finalHaplotypeList_Hcov%.0f_Scov%.0f_occ%i_sens%.4f_%s.txt", minCov, minCovSample, minOccHap, maxSensitivity, marker)), 
   						sep="\t", row.names=F, col.names=T)
   
   
