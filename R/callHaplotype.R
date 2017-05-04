@@ -92,13 +92,14 @@ callHaplotype <- function(x, detectability=1/100, minHaplotypCoverage=3, minRepl
   
  	# remove low covarage sample
   cov <- colSums(x)
-  idx <- cov>minSampleCoverage
+  idx <- cov>=minSampleCoverage
   if(all(!idx)){
-  	x[,idx] <- NA
+  	x[,!idx] <- NA
+  	x <- x[1,, drop=F]
   	rownames(x) <- NA
-  	return(x[,idx])
+  	return(x)
   }else{
-  	x[,idx] <- NA 
+  	x[,!idx] <- NA 
   }
 
   # sample replicated
