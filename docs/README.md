@@ -27,6 +27,8 @@ install.packages("devtools")
 and install HaplotypR by typing
 
 ```R
+devtools::install_github("lerch-a/Rvsearch")
+devtools::install_github("lerch-a/Rswarm")
 devtools::install_github("lerch-a/HaplotypR")
 ```
 
