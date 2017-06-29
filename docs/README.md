@@ -1,5 +1,4 @@
 # Installation
----
 
 To install HaplotypR start R and first install ShortRead by typing:
 
