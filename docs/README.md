@@ -24,20 +24,32 @@ Then install devtools by typing
 install.packages("devtools")
 ```
 
-and install HaplotypR by typing
+and install Rswarm, Rvsearch and HaplotypR by typing
 
 ```R
-devtools::install_github("lerch-a/Rvsearch")
-devtools::install_github("lerch-a/Rswarm")
+path <- file.path(tempfile(pattern="Rswarm-"), "Rswarm")
+dir.create(path, recursive=TRUE)
+repo <- clone("https://github.com/lerch-a/Rswarm.git", path)
+clone("https://github.com/torognes/swarm.git", file.path(path, "src", "swarm"))
+install(path)
+
+path <- file.path(tempfile(pattern="Rvsearch-"), "Rvsearch")
+dir.create(path, recursive=TRUE)
+repo <- clone("https://github.com/lerch-a/Rvsearch.git", path)
+clone("https://github.com/torognes/vsearch.git", file.path(path, "src", "vsearch"))
+install(path)
+
 devtools::install_github("lerch-a/HaplotypR")
 ```
 
-Next load HaplotypR with
 
+# Run HaplotypR
+
+Load HaplotypR package and run GUI with
 ```R
 library("HaplotypR")
+runShinyApp()
 ```
-
 
 # License
 
