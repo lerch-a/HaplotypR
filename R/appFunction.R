@@ -1,8 +1,7 @@
 
 runShinyApp <- function(devel=FALSE){
   require(shiny)
-  if(devel)
-    options(HaplotypR.devel=TRUE)
+  options(HaplotypR.devel=devel)
   runApp(system.file(package = "HaplotypR", "shinyApp", "app.R"))
 }
 
@@ -11,6 +10,6 @@ getAppOptionDevel <- function(){
   if(is.null(opt))
     return(FALSE)
   else
-    return(opt==TRUE)
+    return(opt)
 }
 

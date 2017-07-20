@@ -5,13 +5,21 @@ homepage <- function(){
     hr())
 }
 
+configButton <- function(show=F){
+  if(show)
+    tagList(
+        shinySaveButton('saveConfig', 'Save Configuration', 'Save configuration file', filetype=list(rds=c('RDS'))),
+        shinyFilesButton('loadConfig', 'Load Configuration', 'Please select the configuration file', FALSE),
+        hr()
+        )
+  else tagList()
+}
+
 setinput <- function(){
   fluidPage(
     titlePanel("Input"),
     hr(),
-    shinySaveButton('saveConfig', 'Save Configuration', 'Save configuration file', filetype=list(rds=c('RDS'))),
-    shinyFilesButton('loadConfig', 'Load Configuration', 'Please select the configuration file', FALSE),
-    hr(),
+    configButton(getAppOptionDevel()),
     fluidRow(
       column(12,
              h5("Choose sequence run files (fastq format):"),
