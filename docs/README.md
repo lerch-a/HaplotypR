@@ -1,6 +1,6 @@
 # About
 
-#### Still under development
+#### beta version
 
 HaplotypR is a program for analysis of Amplicon-Seq genotyping experiments. HaplotypR provides a Shiny interface for simpler data analysis.
 
