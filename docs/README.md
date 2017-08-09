@@ -22,11 +22,14 @@ Then install devtools by typing
 
 ```R
 install.packages("devtools")
+install.packages("git2r")
 ```
 
 and install Rswarm, Rvsearch and HaplotypR by typing
 
 ```R
+library(devtools)
+library(git2r)
 path <- file.path(tempfile(pattern="Rswarm-"), "Rswarm")
 dir.create(path, recursive=TRUE)
 repo <- clone("https://github.com/lerch-a/Rswarm.git", path)
