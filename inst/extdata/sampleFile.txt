@@ -1,0 +1,17 @@
+SampleID	BarcodeID_F	BarcodeID_R	SampleName	AddInfo1	AddInfo2
+R-1_Rep1	Fwd_13	Rev_22	R-1	NA	NA
+R-1_Rep2	Fwd_06	Rev_09	R-1	NA	NA
+R-10_Rep1	Fwd_14	Rev_22	R-10	NA	NA
+R-10_Rep2	Fwd_07	Rev_09	R-10	NA	NA
+R-100_Rep1	Fwd_16	Rev_22	R-100	NA	NA
+R-100_Rep2	Fwd_01	Rev_10	R-100	NA	NA
+R-1000_Rep1	Fwd_18	Rev_22	R-1000	NA	NA
+R-1000_Rep2	Fwd_03	Rev_10	R-1000	NA	NA
+R-1500_Rep1	Fwd_19	Rev_22	R-1500	NA	NA
+R-1500_Rep2	Fwd_04	Rev_10	R-1500	NA	NA
+R-3000_Rep1	Fwd_20	Rev_22	R-3000	NA	NA
+R-3000_Rep2	Fwd_05	Rev_10	R-3000	NA	NA
+R-50_Rep1	Fwd_15	Rev_22	R-50	NA	NA
+R-50_Rep2	Fwd_08	Rev_09	R-50	NA	NA
+R-500_Rep1	Fwd_17	Rev_22	R-500	NA	NA
+R-500_Rep2	Fwd_02	Rev_10	R-500	NA	NA
