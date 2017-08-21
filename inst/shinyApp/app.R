@@ -21,22 +21,22 @@ source("guiHelper.R")
 # Define UI for application 
 ui <- shinyUI(
   navbarPage("HaplotypR", theme='haplotypRstyle.css',
-             tabPanel("Home", homepage()), #tabPanel("Project Information"),
+             # tabPanel("Home", homepage()), 
              tabPanel("Input", setinput()),
              navbarMenu("Views",
                         tabPanel("Sample List", viewSampleList()),
                         tabPanel("Marker List", viewMarkerList())
                         ),
-             #tabPanel("Quality Control"),
+             # tabPanel("Quality Control"),
              navbarMenu("Process Reads",
                         tabPanel("De-multiplex by Sample", demultiplexSample()),
                         tabPanel("De-multiplex by Marker", demultiplexMarker()),
                         tabPanel("Concatenate Paired Reads", concatreads())
                         ),
              tabPanel("Call Genotypes", callgenotype()),
-             tabPanel("Call Haplotypes", callhaplotype()),
-             #tabPanel("Settings")
-             tabPanel("Help")
+             tabPanel("Call Haplotypes", callhaplotype())
+             # tabPanel("Settings")
+             # tabPanel("Help")
   )
 )
 
@@ -45,6 +45,7 @@ server <- shinyServer(function(input, output, session) {
   source("serverHelper.R", local=TRUE)
   #volumes <- getVolumes()
   volumes <- c(Home='~')
+  #runvolumes <- c(Home=getwd())
   # volumes <- reactive({
   #   if(change$config>0){
   #     vol <- config$rootVolumes
@@ -58,6 +59,7 @@ server <- shinyServer(function(input, output, session) {
   change <- reactiveValues(config=0)
   config <- list(fnReadR1=NULL, fnReadR2=NULL, fnBarcodeF=NULL, fnBarcodeR=NULL,
                            fnPrimer=NULL, rootVolumes=volumes, outputDir=NULL)
+
 
   ### Input Tab
   shinyFileSave(input, 'saveConfig', roots=volumes, session=session)
@@ -150,7 +152,7 @@ server <- shinyServer(function(input, output, session) {
       showNotification("Sample file missing", closeButton = T, type="error")
       return(NULL)
     }
-    data <- read.delim(file.path(volumes, fileSample()))
+    data <- read.delim(file.path(volumes, fileSample()), stringsAsFactors=F)
     return(data)
   })
   output$sampleTable <- renderTable({ sample() })
@@ -166,7 +168,7 @@ server <- shinyServer(function(input, output, session) {
       showNotification("Primer sequence file not found", closeButton = T, type="error")
       return(NULL)
     }
-    return(read.delim(fn))
+    return(read.delim(fn, stringsAsFactors=F))
   })
   output$markerTable <- renderTable({ primer() })
 
@@ -215,23 +217,40 @@ server <- shinyServer(function(input, output, session) {
     runConcatReads(input, output, session, volumes)
   })
   outConcatReads <- reactive({
-    out <- baseOutDir()
-    if(is.null(out)) return(NULL)
-    fn <- file.path(out, "processedReadSummary.txt")
-    if(!file.exists(fn)){
-      showNotification("Summary file of concatenate paired reads is missing. Did you run this step?", closeButton = T, type="error")
-      return(NULL)
-    }
-    return(read.delim(fn))
+    browser()
+    # This code should not be used anymore
+  #   out <- baseOutDir()
+  #   if(is.null(out)) return(NULL)
+  #   fn <- list.files(out, "processedReadSummary")
+  #   browser()
+  #   prj <- isolate(input$projectSelectedG)
+  #   fn <- fn[grep(prj, fn)]
+  #   if(!file.exists(file.path(out, fn))){
+  #     showNotification("Summary file of concatenate paired reads is missing. Did you run this step?", closeButton = T, type="error")
+  #     return(NULL)
+  #   }
+  #   return(read.delim(file.path(out, fn)))
   })
   output$table_concat <- renderTable(concatReads())
 
+  ### project selection
+  projectSelection <- reactive({
+    out <- baseOutDir()
+    if(is.null(out)) return(NULL)
+    fn <- list.files(out, "processedReadSummary")
+    prj <- do.call(rbind, strsplit(fn, "_bind"))
+    prj <- paste("_bind", sub(".txt", "", prj[,2]), sep="")
+    choiseProject <- as.list(prj)
+    names(choiseProject) <- prj
+    return(choiseProject)
+  })
   
   ### marker selection
   markerSelection <- reactive({
-    sampleTable <- outConcatReads()
-    if(is.null(sampleTable)) return(NULL)
-    mID <- c("none", as.character(unique(sampleTable$MarkerID)))
+    primerTable <- primer()
+    #sampleTable <- outConcatReads()
+    if(is.null(primerTable)) return(NULL)
+    mID <- c("none", as.character(unique(primerTable$MarkerID)))
     choiseMarker <- as.list(mID)
     names(choiseMarker) <- mID
     return(choiseMarker)
@@ -239,6 +258,14 @@ server <- shinyServer(function(input, output, session) {
 
   
   ### Call Genotyp Tab
+  output$uiProjectSelectionG <- renderUI({
+    choiseProject <- projectSelection()
+    if(is.null(choiseProject)){ 
+      return(helpText("Summary file of concatenate paired reads not found. Did you run this step or is the ouput directory set?")) 
+    }
+    selectInput("projectSelectedG", label=NULL, choices=choiseProject)
+  })
+  
   output$uiMarkerSelectionG <- renderUI({
     choiseMarker <- markerSelection()
     if(is.null(choiseMarker)){ 
@@ -255,10 +282,11 @@ server <- shinyServer(function(input, output, session) {
     marker <- input$markerSelectedH
     if(is.null(marker)) return(NULL)
     if(marker=="none") return(NULL)
-    fnSNP <- file.path(out, sprintf("potentialSNPlist_rate%.0f_occ%i_%s.txt", 
+    fnSNP <- file.path(out, sprintf("potentialSNPlist_rate%.0f_occ%i_%s%s.txt", 
                                     isolate(input$minMMrate)*100, 
                                     isolate(input$minOccGen), 
-                                    marker))
+                                    marker,
+                                    projectSelection()))
     if(!file.exists(fnSNP)){
       showNotification("Input 'TODO_2' is missing. Did you run this step?", closeButton = T, type="error")
       return(NULL)
@@ -285,7 +313,16 @@ server <- shinyServer(function(input, output, session) {
   #output$plotMisMatch <- renderPlot({ plotGenotype(input, output, session, volumes) })
   output$plotMisMatch <- renderPlot({ callGen() })
   
+  
   ### Call Haplotyp Tab
+  output$uiProjectSelectionH <- renderUI({
+    choiseProject <- projectSelection()
+    if(is.null(choiseProject)){ 
+      return(helpText("Summary file of concatenate paired reads not found. Did you run this step or is the ouput directory set?")) 
+    }
+    selectInput("projectSelectedH", label=NULL, choices=choiseProject)
+  })
+  
   output$uiMarkerSelectionH <- renderUI({
     choiseMarker <- markerSelection()
     if(is.null(choiseMarker)){ 

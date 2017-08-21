@@ -176,6 +176,8 @@ callgenotype <- function(){
   fluidPage(
     titlePanel("Call Genotyps"),
     hr(),
+    fluidRow(column(2, h5(helpText("Select Trim Parameter:"))),
+             column(10, uiOutput("uiProjectSelectionG"))),
     fluidRow(column(2, h5(helpText("Select Marker:"))),
              column(10, uiOutput("uiMarkerSelectionG"))),
     h5("Options:"),
@@ -201,6 +203,8 @@ callhaplotype <- function(){
   fluidPage(
     titlePanel("Call Haplotypes"),
     hr(),
+    fluidRow(column(2, h5(helpText("Select Trim Parameter:"))),
+             column(10, uiOutput("uiProjectSelectionH"))),
     fluidRow(column(2, h5(helpText("Select Marker:"))),
              column(10, uiOutput("uiMarkerSelectionH"))),
     h5("Options:"),
@@ -224,6 +228,10 @@ callhaplotype <- function(){
       column(2, numericInput("minOccHap", label=NULL, value=2, min=1, step=1)),
       column(4, h5(helpText("Minimum Sample coverage:"))),
       column(2, numericInput("minCovSample", label=NULL, value=50, min=3, step=1))
+    ),
+    fluidRow(
+      column(1, checkboxInput("checkReplicates", label=NULL, value=TRUE)),
+             column(11, h5(helpText("Use replicates to filter.")))
     ),
     fluidRow(
       column(2, actionButton("startCallHaplotype", "Start ...")),

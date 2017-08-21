@@ -103,7 +103,7 @@ renameDemultiplexedFiles <- function(sampleTab, resTab){
   })
   resTab <- do.call(rbind, resTab)
   
-  return(resTab[, c("SampleID","BarcodePair","ReadNumbers","FileR1","FileR2")])
+  return(resTab[, c("SampleID","SampleName","BarcodePair","ReadNumbers","FileR1","FileR2")])
 }
 
 
@@ -165,7 +165,7 @@ runTruncatePrimer <- function(input, output, session, volumes){
     cbind(BarcodePair=as.character(dePlexFiles$BarcodePair), MarkerID=mID, do.call(rbind, res))
   })
   res <- do.call(rbind, res)
-  res <- merge.data.frame(dePlexFiles[,c("SampleID", "BarcodePair")], res, by="BarcodePair")
+  res <- merge.data.frame(dePlexFiles[,c("SampleID", "SampleName","BarcodePair")], res, by="BarcodePair")
   
   write.table(res, file.path(out, "demultiplexMarkerSummary.txt"), sep="\t", row.names=F)
   
@@ -176,31 +176,43 @@ runTruncatePrimer <- function(input, output, session, volumes){
 
 runConcatReads <- function(input, output, session, volumes){
 
+  #project <- createProject()
+  project <- list()
+  
   # Output dir
   out <- isolate(baseOutDir())
   if(is.null(out)){
     showNotification("Output Directory missing", closeButton = T, type="error")
     return(NULL)
   }
+  project$outDir <- out
+  
+  markerTab <- isolate(primer())
+  if(is.null(markerTab)){
+    showNotification("Primer sequence missing", closeButton = T, type="error")
+    return(NULL)
+  }
+  project$marker <- markerTab$MarkerID
   
   # Options
   wTrim <- isolate(input$withTrim)
   if(!wTrim){
     numNtF <- NULL
     numNtR <- NULL
+    concatSuffix <- "_bind_full"
+    project$concatSuffix <- concatSuffix
   }else{
     numNtF <- isolate(input$trim_F)
     numNtR <- isolate(input$trim_R)
-    markerTab <- isolate(primer())
-    if(is.null(markerTab)){
-      showNotification("Primer sequence missing", closeButton = T, type="error")
-      return(NULL)
-    }
+    concatSuffix <- sprintf("_bind%.0f_%.0f", numNtF, numNtR)
+    project$concatSuffix <- concatSuffix
+    project$trimParameter <- c(Fwd=numNtF, Rev=numNtR)
     refSeq <- as.character(markerTab$ReferenceSequence)
     refSeq <- DNAStringSet(paste(substr(refSeq, 1,numNtF), substr(refSeq, nchar(refSeq)+1-numNtR, nchar(refSeq)), sep=""))
     names(refSeq) <- markerTab$MarkerID
+    project$refSeq <- refSeq
     lapply(seq_along(refSeq), function(i){
-      writeFasta(refSeq[i], file.path(out, paste(names(refSeq)[i], "_bind", input$trim_F, "_", input$trim_R, ".fasta", sep="")))
+      writeFasta(refSeq[i], file.path(out, paste(names(refSeq)[i], concatSuffix, ".fasta", sep="")))
     })
   }
   
@@ -244,15 +256,17 @@ runConcatReads <- function(input, output, session, volumes){
 #    cbind(BarcodePair=as.character(dePlexFiles$BarcodePair), MarkerID=mID, do.call(rbind, res))
   #res <- do.call(rbind, res)
   
-  res <- cbind(dePlexFiles[,c("SampleID", "BarcodePair", "MarkerID")], res)
+  res <- cbind(dePlexFiles[,c("SampleID", "SampleName","BarcodePair", "MarkerID")], res)
+  write.table(res, file.path(out, sprintf("processedReadSummary%s.txt", concatSuffix)), sep="\t", row.names=F)
   
-  write.table(res, file.path(out, "processedReadSummary.txt"), sep="\t", row.names=F)
-  
+  #project <- createProject()
+  project$readsFileLst <- res
   return(res)
 }
 
 
 runCallGenotype <- function(input, output, session, volumes){
+  prj <- isolate(input$projectSelectedG)
   marker <- isolate(input$markerSelectedG)
   if(is.null(marker)) return(NULL)
   if(marker=="none"){
@@ -264,19 +278,35 @@ runCallGenotype <- function(input, output, session, volumes){
   # Options
   minMMrate <- isolate(input$minMMrate)
   minOccGen <- isolate(input$minOccGen)
-  # Load Sample   
-  sampleTable <- isolate(outConcatReads())
+  # Load Sample 
+  fn <- list.files(out, "processedReadSummary")
+  fn <- fn[grep(prj, fn)]
+  if(!file.exists(file.path(out, fn))){
+    showNotification("Summary file of concatenate paired reads is missing. Did you run this step?", closeButton = T, type="error")
+    return(NULL)
+  }
+  sampleTable <- read.delim(file.path(out, fn))
+  #sampleTable <- isolate(outConcatReads())
   sampleTable <- sampleTable[sampleTable$MarkerID == marker,]
   sampleTable <- sampleTable[!(is.na(sampleTable$ReadFile) | is.na(sampleTable$SampleID)),]
   # Load Reference
-  postfix <- sub("^.*_bind", "_bind", sampleTable$ReadFile[1])
-  postfix <- sub("\\.fastq.*$", ".fasta", postfix)
-  fn <- file.path(out, paste(marker, postfix, sep=""))
-  if(!file.exists(fn)){
-    showNotification("Reference sequence not found.", closeButton = T, type="error")
-    return()
+  if(grepl("bind_full.fastq", sampleTable$ReadFile[1])){
+    postfix <- "bind_full"
+    markerTab <- isolate(primer())
+    refSeq <- as.character(markerTab$ReferenceSequence)
+    refSeq <- DNAStringSet(refSeq)
+    names(refSeq) <- markerTab$MarkerID
+    refSeq <- refSeq[grep(marker, markerTab$MarkerID)]
+  }else{
+    postfix <- sub("^.*_bind", "_bind", sampleTable$ReadFile[1])
+    postfix <- sub("\\.fastq.*$", "", postfix)
+    fn <- file.path(out, paste(marker, postfix, ".fasta", sep=""))
+    if(!file.exists(fn)){
+      showNotification("Reference sequence not found.", closeButton = T, type="error")
+      return()
+    }
+    refSeq <- readDNAStringSet(fn)
   }
-  refSeq <- readDNAStringSet(fn)
   
   # Configure shiny progress
   progress <- Progress$new(session, min=0, max=length(sampleTable$ReadFile))
@@ -293,18 +323,20 @@ runCallGenotype <- function(input, output, session, volumes){
   seqErr <- do.call(cbind, lapply(seqErrLst, function(l){
     l[,"MisMatch"]/l[,"Coverage"]
   }))
-  write.table(seqErr, file.path(out, sprintf("mismatchRate_%s.txt", marker)), sep="\t", row.names=F)
+  write.table(seqErr, file.path(out, sprintf("mismatchRate_rate%.0f_occ%i_%s%s.txt", 
+                                             minMMrate*100, minOccGen, marker, postfix)), sep="\t", row.names=F)
 
   potSNP <- callGenotype(seqErr, minMismatchRate=minMMrate, minReplicate=minOccGen)
   snpRef <- unlist(lapply(potSNP, function(snp){
     as.character(subseq(refSeq, start=snp, width=1))
   }))
   snpLst <- cbind(Chr=names(refSeq), Pos=potSNP, Ref=snpRef, Alt="N")
-  write.table(snpLst, file=file.path(out, sprintf("potentialSNPlist_rate%.0f_occ%i_%s.txt", 
-                                                  minMMrate*100, minOccGen, marker)), 
+  write.table(snpLst, file=file.path(out, sprintf("potentialSNPlist_rate%.0f_occ%i_%s%s.txt", 
+                                                  minMMrate*100, minOccGen, marker, postfix)), 
               row.names=F, col.names=T, sep="\t", quote=F)
   
-  png(file.path(out, sprintf("plotMisMatchRatePerBase_rate%.0f_occ%i_%s.png", minMMrate*100, minOccGen, marker)), 
+  png(file.path(out, sprintf("plotMisMatchRatePerBase_rate%.0f_occ%i_%s%s.png", 
+                             minMMrate*100, minOccGen, marker, postfix)), 
       width=1500 , height=600)
   matplot(seqErr, type="p", pch=16, cex=0.4, col="#00000088", ylim=c(0, 1),
           ylab="Mismatch Rate", xlab="Base Position", main=marker, cex.axis=2, cex.lab=2)
@@ -324,6 +356,7 @@ runCallGenotype <- function(input, output, session, volumes){
 }
 
 runCreateHaplotypOverview <- function(input, output, session, volumes){
+  prj <- isolate(input$projectSelectedH)
   marker <- isolate(input$markerSelectedH)
   if(is.null(marker)) return(NULL)
   if(marker=="none"){
@@ -331,11 +364,28 @@ runCreateHaplotypOverview <- function(input, output, session, volumes){
     return(NULL)
   }
 
+  # Output Dir
+  out <- isolate(baseOutDir())
+  
   # Load sample
-  sampleTable <- isolate(outConcatReads())
+  fn <- list.files(out, "processedReadSummary")
+  fn <- fn[grep(prj, fn)]
+  if(!file.exists(file.path(out, fn))){
+    showNotification("Summary file of concatenate paired reads is missing. Did you run this step?", closeButton = T, type="error")
+    return(NULL)
+  }
+  sampleTable <- read.delim(file.path(out, fn))
+  #sampleTable <- isolate(outConcatReads())
   sampleTable <- sampleTable[sampleTable$MarkerID == marker,]
   sampleTable <- sampleTable[!is.na(sampleTable$ReadFile) & !is.na(sampleTable$SampleID),]
   sampleTable <- sampleTable[grep("NA", sampleTable$BarcodePair, invert=T),]
+  if(grepl("_full.fastq", sampleTable$ReadFile[1])){
+    postfix <- "full"
+  }else{
+    postfix <- sub("^.*_bind", "_bind", sampleTable$ReadFile[1])
+    postfix <- sub("\\.fastq.*$", "", postfix)
+  }
+  
   # Output dir
   out <- isolate(baseOutDir())
   outFreqReads <- file.path(out, "frequencyFiles")
@@ -369,9 +419,9 @@ runCreateHaplotypOverview <- function(input, output, session, volumes){
                                sampleNames=as.character(sampleTable$SampleID), replicatNames=NULL, 
                                haplotypeUIDFile=NULL, progressReport=updateProgress)
   if(getAppOptionDevel())
-    write.table(tab, file=file.path(out, sprintf("contingencyTable_%s.txt", marker)), sep="\t")
+    write.table(tab, file=file.path(out, sprintf("contingencyTable_%s%s.txt", marker, postfix)), sep="\t")
   
-  fnAllSeq <- file.path(out, sprintf("allSequences_%s.fasta", marker))
+  fnAllSeq <- file.path(out, sprintf("allSequences_%s%s.fasta", marker, postfix))
   file.rename(file.path(outFreqReads, "allHaplotypes.fa"), fnAllSeq)
 
   frqfile <- file.path(outFreqReads, sub(".fastq.gz$", "_hapFreq.fa", basename(as.character(sampleTable$ReadFile))))
@@ -403,10 +453,18 @@ runCreateHaplotypOverview <- function(input, output, session, volumes){
 
   # check indels
   if(isolate(input$cIndels)){
-    refSeq <- sub("^.*_bind", "_bind", as.character(sampleTable$ReadFile)[1])
-    refSeq <- sub("fastq.*$", "fasta", refSeq)
-    refSeq <- file.path(out, paste(marker, refSeq, sep=""))
-    refSeq <- readDNAStringSet(refSeq, format="fasta")
+    if(postfix=="full"){
+      markerTab <- isolate(primer())
+      refSeq <- as.character(markerTab$ReferenceSequence)
+      refSeq <- DNAStringSet(refSeq)
+      names(refSeq) <- markerTab$MarkerID
+      refSeq <- refSeq[grep(marker, markerTab$MarkerID)]
+    }else{
+      refSeq <- sub("^.*_bind", "_bind", as.character(sampleTable$ReadFile)[1])
+      refSeq <- sub("fastq.*$", "fasta", refSeq)
+      refSeq <- file.path(out, paste(marker, refSeq, sep=""))
+      refSeq <- readDNAStringSet(refSeq, format="fasta")
+    }
   }else{
     refSeq <- NULL
   }
@@ -446,7 +504,7 @@ runCreateHaplotypOverview <- function(input, output, session, volumes){
   overviewHap <- as.data.frame(overviewHap)
   
   progressMain$set(value=6)
-  write.table(overviewHap, file=file.path(out, sprintf("HaplotypeOverviewTable_%s.txt", marker)), sep="\t")
+  write.table(overviewHap, file=file.path(out, sprintf("HaplotypeOverviewTable_%s%s.txt", marker, postfix)), sep="\t")
   
 #   return(overviewHap)
 # }
@@ -489,7 +547,7 @@ runCreateHaplotypOverview <- function(input, output, session, volumes){
   haplotypesSample <- reclusterHaplotypesTable(haplotypesSample)
   if(getAppOptionDevel())
     write.table(cbind(HaplotypNames=rownames(haplotypesSample),haplotypesSample), 
-              file=file.path(out, sprintf("rawHaplotypeTable_%s.txt", marker)), sep="\t", row.names=F, col.names=T)
+              file=file.path(out, sprintf("rawHaplotypeTable_%s%s.txt", marker, postfix)), sep="\t", row.names=F, col.names=T)
   #haplotypesSample <- reclusterHaplotypesTable(haplotypesSample)
   
   # Apply cut-off haplotype only in 1 sample
@@ -502,24 +560,80 @@ runCreateHaplotypOverview <- function(input, output, session, volumes){
   progressMain$set(value=7)
   if(getAppOptionDevel())
     write.table(cbind(HaplotypNames=rownames(haplotypesSample), haplotypesSample), 
-  						file=file.path(out, sprintf("finalHaplotypeTable_Hcov%.0f_Scov%.0f_occ%i_sens%.4f_%s.txt", minCov, minCovSample, minOccHap, maxSensitivity, marker)), 
+  						file=file.path(out, sprintf("finalHaplotypeTable_Hcov%.0f_Scov%.0f_occ%i_sens%.4f_%s%s.txt", 
+  						                            minCov, minCovSample, minOccHap, maxSensitivity, marker, postfix)), 
   													 sep="\t", row.names=F, col.names=T)
-  
-  lst <- lapply(1:dim(haplotypesSample)[2], function(i){
-    tab <- callHaplotype(haplotypesSample[,i, drop=F], minHaplotypCoverage=minCov, 
-                         minReplicate=1, detectability=maxSensitivity, minSampleCoverage=minCovSample, 
-                         reportBackground=T)
-    tab <- cbind(sampleTable[i,c("SampleID","MarkerID")], Haplotype=rownames(tab), Reads=as.integer(tab))
-    colnames(tab) <- c("SampleID","MarkerID","Haplotype","Reads")
-    return(tab)
-  })
+
+  # check replicates
+  if(isolate(input$checkReplicates)){
+    idx <- split(1:dim(haplotypesSample)[2], sampleTable$SampleName)
+    lst <- lapply(idx, function(i){
+      tab <- callHaplotype(haplotypesSample[,i, drop=F], minHaplotypCoverage=minCov, 
+                           minReplicate=length(i), detectability=maxSensitivity, minSampleCoverage=minCovSample, 
+                           reportBackground=T)
+      tab <- cbind(sampleTable[rep(i,each=dim(tab)[1]), c("SampleID","SampleName","MarkerID")], 
+                   Haplotype=rownames(tab), Reads=as.integer(tab))
+      colnames(tab) <- c("SampleID","SampleName","MarkerID","Haplotype","Reads")
+      rownames(tab) <- NULL
+      #check individual samples for chimera
+      tmpTab <- as.data.frame(tapply(tab$Reads, tab$Haplotype, sum))
+      tmpTab$Haplotype <- rownames(tmpTab)
+      colnames(tmpTab) <- c("Reads","Haplotype")
+      hIdx <- grep(marker, tmpTab$Haplotype)
+      chim <- NULL
+      if(length(hIdx)>2){
+        browser()
+        chim <- flagChimera(tmpTab[hIdx,], overviewHap)
+      }
+      rm(tmpTab)
+      tab$FlagChimera <- tab$Haplotype %in% chim
+      return(tab)
+    })
+  }else{
+    lst <- lapply(1:dim(haplotypesSample)[2], function(i){
+      tab <- callHaplotype(haplotypesSample[,i, drop=F], minHaplotypCoverage=minCov, 
+                           minReplicate=1, detectability=maxSensitivity, minSampleCoverage=minCovSample, 
+                           reportBackground=T)
+      suppressWarnings(
+        tab <- cbind(sampleTable[i,c("SampleID","SampleName","MarkerID")], 
+                     Haplotype=rownames(tab), Reads=as.integer(tab))
+      )
+      colnames(tab) <- c("SampleID","SampleName","MarkerID","Haplotype","Reads")
+      rownames(tab) <- NULL
+      #check individual samples for chimera
+      hIdx <- grep(marker, tab$Haplotype)
+      chim <- NULL
+      if(length(hIdx)>2){
+        browser()
+        chim <- flagChimera(tab[hIdx,], overviewHap)
+      }
+      tab$FlagChimera <- tab$Haplotype %in% chim
+      return(tab)
+    })
+  }
   lst <- do.call(rbind, lst)
+  #TODO check individual samples for chimera
+
   write.table(lst, 
-  						file=file.path(out, sprintf("finalHaplotypeList_Hcov%.0f_Scov%.0f_occ%i_sens%.4f_%s.txt", minCov, minCovSample, minOccHap, maxSensitivity, marker)), 
+  						file=file.path(out, sprintf("finalHaplotypeList_Hcov%.0f_Scov%.0f_occ%i_sens%.4f_%s%s.txt", 
+  						                            minCov, minCovSample, minOccHap, maxSensitivity, marker, postfix)), 
   						sep="\t", row.names=F, col.names=T)
   
   
   progressMain$set(value=8)
   #return(as.data.frame(cbind(HaplotypNames=rownames(haplotypesSample))))
   return(as.data.frame(lst))
+}
+
+flagChimera <- function(hapTable, overviewHap){
+  snps <- overviewHap[overviewHap$FinalHaplotype %in% hapTable$Haplotype, c("snps", "FinalHaplotype")]
+  snps <- snps[!duplicated(snps),]
+  rownames(snps) <- snps$FinalHaplotype
+  snps$snps <- as.character(snps$snps)
+  snps <- snps[hapTable$Haplotype, "snps"]
+  names(snps) <- hapTable$Haplotype
+  snps <- snps[order(hapTable$Reads, decreasing=T)]
+  chim <- findChimeras(snps)
+  browser()
+  return(chim)
 }
