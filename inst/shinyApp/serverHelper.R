@@ -582,7 +582,6 @@ runCreateHaplotypOverview <- function(input, output, session, volumes){
       hIdx <- grep(marker, tmpTab$Haplotype)
       chim <- NULL
       if(length(hIdx)>2){
-        browser()
         chim <- flagChimera(tmpTab[hIdx,], overviewHap)
       }
       rm(tmpTab)
@@ -604,7 +603,6 @@ runCreateHaplotypOverview <- function(input, output, session, volumes){
       hIdx <- grep(marker, tab$Haplotype)
       chim <- NULL
       if(length(hIdx)>2){
-        browser()
         chim <- flagChimera(tab[hIdx,], overviewHap)
       }
       tab$FlagChimera <- tab$Haplotype %in% chim
@@ -630,10 +628,9 @@ flagChimera <- function(hapTable, overviewHap){
   snps <- snps[!duplicated(snps),]
   rownames(snps) <- snps$FinalHaplotype
   snps$snps <- as.character(snps$snps)
-  snps <- snps[hapTable$Haplotype, "snps"]
+  snps <- snps[as.character(hapTable$Haplotype), "snps"]
   names(snps) <- hapTable$Haplotype
   snps <- snps[order(hapTable$Reads, decreasing=T)]
   chim <- findChimeras(snps)
-  browser()
-  return(chim)
+  return(chim[,"chimera"])
 }
