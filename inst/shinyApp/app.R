@@ -280,15 +280,16 @@ server <- shinyServer(function(input, output, session) {
     out <- isolate(baseOutDir())
     if(is.null(out)) return(NULL)
     marker <- input$markerSelectedH
+    proj <- input$projectSelectedH
     if(is.null(marker)) return(NULL)
     if(marker=="none") return(NULL)
     fnSNP <- file.path(out, sprintf("potentialSNPlist_rate%.0f_occ%i_%s%s.txt", 
                                     isolate(input$minMMrate)*100, 
                                     isolate(input$minOccGen), 
                                     marker,
-                                    projectSelection()))
+                                    proj))
     if(!file.exists(fnSNP)){
-      showNotification("Input 'TODO_2' is missing. Did you run this step?", closeButton = T, type="error")
+      showNotification("Input 'Trim Parameter' is missing.", closeButton = T, type="error")
       return(NULL)
     }
     potSNP <- read.delim(fnSNP)
