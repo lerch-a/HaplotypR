@@ -164,21 +164,21 @@ dir.create(outProcFiles)
 # Trim options
 numNtF <- 190
 numNtR <- 120
-concatSuffix <- sprintf("_bind%.0f_%.0f", numNtF, numNtR)
+postfix <- sprintf("_bind%.0f_%.0f", numNtF, numNtR)
 
 # Adjust reference to trim options and save as fasta file
 refSeq <- as.character(markerTab$ReferenceSequence)
 refSeq <- DNAStringSet(paste(substr(refSeq, 1,numNtF), substr(refSeq, nchar(refSeq)+1-numNtR, nchar(refSeq)), sep=""))
 names(refSeq) <- markerTab$MarkerID
 lapply(seq_along(refSeq), function(i){
-  writeFasta(refSeq[i], file.path(outputDir, paste(names(refSeq)[i], concatSuffix, ".fasta", sep="")))
+  writeFasta(refSeq[i], file.path(outputDir, paste(names(refSeq)[i], postfix, ".fasta", sep="")))
 })
 
 # Fuse paired read
 procReads <- bindAmpliconReads(as.character(dePlexMarker$FileR1), as.character(dePlexMarker$FileR2), outProcFiles, 
                          read1Length=numNtF, read2Length=numNtR)
 procReads <- cbind(dePlexMarker[,c("SampleID", "SampleName","BarcodePair", "MarkerID")], procReads)
-write.table(procReads, file.path(outputDir, sprintf("processedReadSummary%s.txt", concatSuffix)), sep="\t", row.names=F)
+write.table(procReads, file.path(outputDir, sprintf("processedReadSummary%s.txt", postfix)), sep="\t", row.names=F)
 ```
 
 Calculate mismatch rate and call SNPs
@@ -198,7 +198,7 @@ snpLst <- lapply(markerTab$MarkerID, function(marker){
   seqErr <- do.call(cbind, lapply(seqErrLst, function(l){
     l[,"MisMatch"]/l[,"Coverage"]
   }))
-  write.table(seqErr, file.path(outputDir, sprintf("mismatchRate_rate_%s%s.txt", marker, concatSuffix)), sep="\t", row.names=F)
+  write.table(seqErr, file.path(outputDir, sprintf("mismatchRate_rate_%s%s.txt", marker, postfix)), sep="\t", row.names=F)
   
   # Call SNPs
   potSNP <- callGenotype(seqErr, minMismatchRate=minMMrate, minReplicate=minOccGen)
@@ -207,12 +207,12 @@ snpLst <- lapply(markerTab$MarkerID, function(marker){
   }))
   snps <- cbind(Chr=marker, Pos=potSNP, Ref=snpRef, Alt="N")
   write.table(snps, file=file.path(outputDir, sprintf("potentialSNPlist_rate%.0f_occ%i_%s%s.txt", 
-                                                  minMMrate*100, minOccGen, marker, concatSuffix)), 
+                                                  minMMrate*100, minOccGen, marker, postfix)), 
               row.names=F, col.names=T, sep="\t", quote=F)
   
   # Plot mismatch rate and SNP calls
   png(file.path(outputDir, sprintf("plotMisMatchRatePerBase_rate%.0f_occ%i_%s%s.png", 
-                             minMMrate*100, minOccGen, marker, concatSuffix)), 
+                             minMMrate*100, minOccGen, marker, postfix)), 
       width=1500 , height=600)
   matplot(seqErr, type="p", pch=16, cex=0.4, col="#00000088", ylim=c(0, 1),
           ylab="Mismatch Rate", xlab="Base Position", main=marker, cex.axis=2, cex.lab=2)
@@ -228,4 +228,14 @@ names(snpLst) <- markerTab$MarkerID
 
 Call Haplotypes (Work in progress.)
 ```R
+# call haplotype options
+minCov <- 3
+detectionLimit <- 1/100
+minOccHap <- 2
+minCovSample <- 25
+
+# call final haplotypes
+finalTab <- createFinalHaplotypTable(outputDir=outputDir, sampleTable=procReads, snpList=snpLst, postfix=postfix, 
+                                     minHaplotypCoverage=minCov, minReplicate=minOccHap, 
+                                     detectability=detectionLimit, minSampleCoverage=minCovSample)
 ```
