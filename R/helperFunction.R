@@ -88,6 +88,17 @@ findChimeras <- function(snps){
 	return(res)
 }
 
+flagChimera <- function(hapTable, overviewHap){
+  snps <- overviewHap[overviewHap$FinalHaplotype %in% hapTable$Haplotype, c("snps", "FinalHaplotype")]
+  snps <- snps[!duplicated(snps),]
+  rownames(snps) <- snps$FinalHaplotype
+  snps$snps <- as.character(snps$snps)
+  snps <- snps[as.character(hapTable$Haplotype), "snps"]
+  names(snps) <- hapTable$Haplotype
+  snps <- snps[order(hapTable$Reads, decreasing=T)]
+  chim <- findChimeras(snps)
+  return(chim[,"chimera"])
+}
 
 
 
