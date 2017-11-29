@@ -65,15 +65,16 @@ setwd(outputDir)
 
 # Copy example files to output directory
 file.copy(from=system.file(package="HaplotypR", "extdata"), to=outputDir, recursive = T)
-# List files example files in output direcoty
+# List files example files in output directory
 dir(file.path(outputDir, "extdata"))
 ```
+The listed file can be used as example input files in the shiny app. The following files should be listed with the last R command: "barcode_Fwd.fasta", "barcode_Rev.fasta", "markerFile.txt", "readsF.fastq.gz", "readsR.fastq.gz", "sampleFile.txt". 
+
 
 Run HaplotypR GUI:
 ```R
 runShinyApp()
 ```
 
-# Run HaplotypR in R command line (without shiny app)
-
+# Run HaplotypR on R command line (without shiny app)
 Work in progress.
