@@ -1,13 +1,14 @@
 # About
 
-#### beta version
-
 HaplotypR is a program for analysis of Amplicon-Seq genotyping experiments. HaplotypR provides a Shiny interface for simpler data analysis.
 
 The HaplotypR project was developed by Anita Lerch. A paper with more details about the program is available from:
 
-Lerch A, et al. Development Of Amplicon Deep Sequencing Markers And Data Analysis Pipeline For Genotyping Multi-Clonal Malaria Infections. bioRxiv (2017), http://dx.doi.org/10.1101/121426. 
+Lerch, A. et al. Development Of Amplicon Deep Sequencing Markers And Data Analysis Pipeline For Genotyping Multi-Clonal Malaria Infections. BMC Genomics (2017), 18(1), p.864, http://dx.doi.org/10.1186/s12864-017-4260-y
 
+# License
+
+HaplotypR is distributed under the GNU General Public License, version 3.
 
 # Installation
 
@@ -45,15 +46,34 @@ install(path)
 devtools::install_github("lerch-a/HaplotypR")
 ```
 
+# Run HaplotypR as Shiny App
 
-# Run HaplotypR
-
-Load HaplotypR package and run GUI with
+Load HaplotypR package:
 ```R
 library("HaplotypR")
+```
+
+Copy Example Files to a working directory 'outputDir':
+```R
+# Define output directory 
+outputDir <- "~/exampleHaplotypR"  
+# Create output directoy
+if(!dir.exists(outputDir))
+  dir.create(outputDir, recursive=T)
+# Set working directory to output directory
+setwd(outputDir)
+
+# Copy example files to output directory
+file.copy(from=system.file(package="HaplotypR", "extdata"), to=outputDir, recursive = T)
+# List files example files in output direcoty
+dir(file.path(outputDir, "extdata"))
+```
+
+Run HaplotypR GUI:
+```R
 runShinyApp()
 ```
 
-# License
+# Run HaplotypR in R command line (without shiny app)
 
-HaplotypR is distributed under the GNU General Public License, version 3.
+Work in progress.
