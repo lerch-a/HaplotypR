@@ -1,4 +1,23 @@
 
+renameDemultiplexedFiles <- function(sampleTab, resTab){
+  
+  sampleTab$BarcodePair <- paste(sampleTab$BarcodeID_F, sampleTab$BarcodeID_R, sep="-")
+  resTab <- merge.data.frame(sampleTab, resTab, by="BarcodePair", all.y=T)
+  
+  resTab <- lapply(1:dim(resTab)[1], function(i){
+    #if(!is.na(resTab$SampleID[i])){
+    old <- as.character(resTab[i, c("FileR1","FileR2")])
+    #new <- sub(resTab$BarcodePair[i], resTab$SampleID[i], old)
+    new <- file.path(dirname(old), paste(resTab$SampleID[i], "_BC_", basename(old), sep=""))
+    resTab[i, c("FileR1","FileR2")] <- new
+    file.rename(as.character(old), as.character(new))
+    #}
+    return(resTab[i,])
+  })
+  resTab <- do.call(rbind, resTab)
+  
+  return(resTab[, c("SampleID","SampleName","BarcodePair","ReadNumbers","FileR1","FileR2")])
+}
 
 reclusterHaplotypesTable <- function(haplotypeTable, haplotypCluster=NULL){
   hapName <- if(is.null(haplotypCluster)){
