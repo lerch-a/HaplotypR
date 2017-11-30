@@ -20,7 +20,6 @@ BiocStyle::latex(width=80, bibstyle="unsrturl")
 %\usepackage[utf8x]{inputenc}
 %\usepackage[authoryear,round]{natbib}
 
-\CRANpkg and \Rpackagefrom BiocStyle
 \newcommand{\Rmethod}[1]{{\texttt{#1}}}
 \newcommand{\Rfunarg}[1]{{\texttt{#1}}}
 \newcommand{\fasta}{\texttt{FASTA}}
@@ -30,7 +29,7 @@ BiocStyle::latex(width=80, bibstyle="unsrturl")
 %\bioctitle{An Introduction to \HaplotypR{}}
 \bioctitle[HaplotypR]{An Introduction to HaplotypR}
 \author{Anita Lerch}
-\date{Modified: December 19 2014. Compiled: \today}
+\date{Modified: Novermber 29, 2017. Compiled: \today}
 
 \begin{document}
 \SweaveOpts{concordance=TRUE}
