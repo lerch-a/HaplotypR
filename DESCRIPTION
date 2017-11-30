@@ -7,7 +7,7 @@ Author: Anita Lerch
 Maintainer: Anita Lerch <anita.lerch@unibas.ch>
 Depends:
 Imports: methods, BiocGenerics, S4Vectors, Biobase, Biostrings, ShortRead, BiocParallel
-Suggests: shiny, shinyFiles
+Suggests: shiny, shinyFiles, BiocStyle
 LinkingTo:
 Description: A pipeline to analyse amplicon deep sequencing genotyping data
 License: GPLv3
