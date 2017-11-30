@@ -22,3 +22,7 @@ inst/shinyApp/.Rhistory
 *.out
 
 *.toc
+
+*.bbl
+
+*.blg
