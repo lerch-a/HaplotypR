@@ -20,45 +20,21 @@ BiocStyle::latex(width=80, bibstyle="unsrturl")
 %\usepackage[utf8x]{inputenc}
 %\usepackage[authoryear,round]{natbib}
 
-
-%\newcommand{\Rfunction}[1]{{\texttt{#1}}} % defined in BiocStyle
-%\newcommand{\Robject}[1]{{\texttt{#1}}}   % defined in BiocStyle
-%\newcommand{\Rpackage}[1]{{\textit{#1}}}  % replaced by \Biocpkg, \Biocannopkg, \Biocexptpkg, \CRANpkg and \Rpackagefrom BiocStyle
+\CRANpkg and \Rpackagefrom BiocStyle
 \newcommand{\Rmethod}[1]{{\texttt{#1}}}
 \newcommand{\Rfunarg}[1]{{\texttt{#1}}}
-%\newcommand{\Rclass}[1]{{\textit{#1}}}    % defined in BiocStyle
-%\newcommand{\Rcode}[1]{{\texttt{#1}}}     % defined in BiocStyle
-
-%\newcommand{\software}[1]{\textsf{#1}} % defined in BiocStyle
-%\newcommand{\R}{\software{R}}          % defined in BiocStyle
-%\newcommand{\HaplotypR}{\Rpackage{HaplotypR}}  % adjusted to BiocStyle
-%\newcommand{\HaplotypR}{\Biocpkg{HaplotypR}}
 \newcommand{\fasta}{\texttt{FASTA}}
 \newcommand{\fastq}{\texttt{FASTQ}}
 
-%original code environment
-%\DefineVerbatimEnvironment{Sinput}{Verbatim}{fontshape=sl}
-%\DefineVerbatimEnvironment{Soutput}{Verbatim}{}
-%\DefineVerbatimEnvironment{Scode}{Verbatim}{fontshape=sl}
-
-%code environment used before BiocStyle
-%\usepackage{Sweave}
-%\DefineVerbatimEnvironment{Sinput}{Verbatim} {xleftmargin=2em}
-%\DefineVerbatimEnvironment{Soutput}{Verbatim}{xleftmargin=2em}
-%\DefineVerbatimEnvironment{Scode}{Verbatim}{xleftmargin=2em}
-%\fvset{listparameters={\setlength{\topsep}{0pt}}}
-%\renewenvironment{Schunk}{\vspace{\topsep}}{\vspace{\topsep}}
 
 %\bioctitle{An Introduction to \HaplotypR{}}
-\bioctitle{An Introduction to HaplotypR}
+\bioctitle[HaplotypR]{An Introduction to HaplotypR}
 \author{Anita Lerch}
 \date{Modified: December 19 2014. Compiled: \today}
 
 \begin{document}
 \SweaveOpts{concordance=TRUE}
-%\bibliographystyle{plain}
-%\bibliographystyle{unsrt} % handled by BiocStyle
-%\bibliographystyle{plainnat}
+%\bibliographystyle{plain} % handled by BiocStyle
 
 <<options, results=hide, echo=FALSE>>=
 #options(width=65)
@@ -71,6 +47,165 @@ options('useFancyQuotes' = FALSE, continue=" ", digits=3)
 \tableofcontents
 
 \newpage
+
+
+\section{Introduction}
+
+% The \Githubpkg{lerch-a/HaplotypR} package integrates the functionality of several \R{} packages (such as \Biocpkg{Rswarm} \cite{swarm} and \Biocpkg{Rvsearch} \cite{swarm}) and external software (e.g. \software{bowtie}, through the \Biocpkg{Rbowtie} package). The package aims to .
+
+
+\section{Preliminaries}
+
+\subsection{Citing \Githubpkg{lerch-a/HaplotypR}}
+If you use \Githubpkg{lerch-a/HaplotypR} \cite{HaplotypR} in your work, you can cite it as follows:
+<<cite, eval=TRUE>>=
+citation("HaplotypR")
+@
+
+\subsection{Installation}
+\label{sec:Installation}
+To install HaplotypR start R and first install ShortRead by typing
+<<install1, eval=FALSE>>=
+source("http://bioconductor.org/biocLite.R")
+biocLite("ShortRead")
+@
+
+Then install devtools by typing
+<<install2, eval=FALSE>>=
+install.packages("devtools")
+install.packages("git2r")
+@
+
+and install Rswarm, Rvsearch and HaplotypR by typing
+<<install3, eval=FALSE>>=
+library(devtools)
+library(git2r)
+path <- file.path(tempfile(pattern="Rswarm-"), "Rswarm")
+dir.create(path, recursive=TRUE)
+repo <- clone("https://github.com/lerch-a/Rswarm.git", path)
+clone("https://github.com/torognes/swarm.git", file.path(path, "src", "swarm"))
+install(path)
+
+path <- file.path(tempfile(pattern="Rvsearch-"), "Rvsearch")
+dir.create(path, recursive=TRUE)
+repo <- clone("https://github.com/lerch-a/Rvsearch.git", path)
+clone("https://github.com/torognes/vsearch.git", file.path(path, "src", "vsearch"))
+install(path)
+
+devtools::install_github("lerch-a/HaplotypR")
+@
+
+\newpage
+\section{Quick Start}
+
+
+Before you can use any \Githubpkg{lerch-a/HaplotypR} commands you have to load the package by typing
+<<loadHaplotypRLibrary, eval=FALSE>>=
+library(HaplotypR)
+@ 
+
+\subsection{Sample \Githubpkg{lerch-a/HaplotypR} session}
+\label{sec:SampleSession}
+<<SampleSession1, eval=TRUE>>=
+library(HaplotypR)
+file.copy(system.file(package="HaplotypR", "extdata"), ".", recursive=TRUE)
+@
+
+
+ 
+\newpage
+\section{\Githubpkg{lerch-a/HaplotypR} Overview}
+% The following scheme shows the major components of \Githubpkg{lerch-a/HaplotypR} and their relationships:
+% \begin{figure}[!h]
+% \begin{center}
+% \includegraphics{HaplotypR-scheme.png}
+% \caption{HaplotypR package overview}
+% \label{fig:HaplotypR-scheme}
+% \end{center}
+% \end{figure}
+% 
+% \vskip 4em
+
+
+\subsection{File storage locations}
+\label{sec:FileStorage}
+
+
+\newpage
+\section{Example tasks}
+\label{sec:exampleTasks}
+\subsection{Create a sample file}
+\label{sec:SampleFile}
+The sample file is a tab-delimited text file with two or three columns. 
+
+Here are examples of such sample files for a paired-end experiment:
+\begin{center}
+\ttfamily
+\begin{tabular}{|lll|}
+\hline
+FileName1        & FileName2        & SampleName \\
+rna\_1\_1.fq.bz2 & rna\_1\_2.fq.bz2 & Sample1    \\
+rna\_2\_1.fq.bz2 & rna\_2\_2.fq.bz2 & Sample2    \\
+\hline
+\end{tabular}
+\end{center}
+\vskip 1em
+
+These example files are also contained in the \Githubpkg{lerch-a/HaplotypR} package and may be used as templates. The path of the files can be determined using:
+<<sampleFile, eval=FALSE>>=
+sampleFile1 <- system.file(package="HaplotypR", "extdata",
+                           "samples_chip_single.txt")
+sampleFile2 <- system.file(package="HaplotypR", "extdata",
+                           "samples_rna_paired.txt")
+@
+
+
+
+
+\subsection{Sequence data pre-processing}
+% \label{sec:workflowPreprocess}
+% The \Rfunction{preprocessReads} function can be used to prepare the input sequence files prior to alignment. The function takes one or several sequence files (or pairs of files for a paired-end experiment) in \fasta{} or \fastq{} format as input and produces the same number of output files with the processed reads.
+% 
+% In the following example, we truncate the reads by removing the three bases from the 3'-end (the right side), remove the adapter sequence \texttt{AAAAAAAAAA} from the 5'-end (the left side) and filter out reads that, after truncation and adapter removal, are shorter than 14 bases or contain more than 2 \texttt{N} bases:
+% <<preprocessReadsSingle,eval=TRUE>>=
+% td <- tempdir()
+% infiles <- system.file(package="HaplotypR", "extdata",
+%                        c("rna_1_1.fq.bz2","rna_2_1.fq.bz2"))
+% outfiles <- file.path(td, basename(infiles))
+% res <- preprocessReads(filename = infiles,
+%                        outputFilename = outfiles,
+%                        truncateEndBases = 3,
+%                        Lpattern = "AAAAAAAAAA",
+%                        minLength = 14, 
+%                        nBases = 2)
+% res
+% unlink(outfiles)
+% @ 
+
+\Rfunction{preprocessReads} returns a matrix with a summary of the pre-processing. 
+
+\newpage
+\section{Example workflows}
+\label{sec:exampleWorkflows}
+
+
+\newpage
+\section{Description of Individual \Githubpkg{lerch-a/HaplotypR} Functions}
+Please refer to the \Githubpkg{lerch-a/HaplotypR} reference manual or the function documentation (e.g. using \Rcode{?qAlign}) for a complete description of \Githubpkg{lerch-a/HaplotypR} functions. The descriptions provided below are meant to give an overview over all functions and summarize the purpose of each one.
+
+\subsection{\Rfunction{preprocessReads}}
+\label{sec:preprocessReads}
+% The \Rfunction{preprocessReads} function can be used to prepare the input sequences before alignment to the reference genome, for example to filter out low quality reads unlikely to produce informative alignments. When working with paired-end experiments, the paired reads are expected to be contained in identical order in two separate files. For this reason, both reads of a pair are filtered out if any of the two reads fulfills the filtering criteria. The following types of filtering tasks can be performed (in the order as listed):
+% \begin{quote}
+% \begin{enumerate}
+% \item \textbf{Truncate reads}: remove nucleotides from the start and/or end of each read.
+% \item \textbf{Trim adapters}: remove nucleotides at the beginning and/or end of each read that match to a defined (adapter) sequence. The adapter trimming is done by calling \Rfunction{trimLRPatterns} from the \Biocpkg{Biostrings} package \cite{Biostrings}.
+% \item \textbf{Filter out low quality reads}: Filter out reads that fulfill any of the filtering criteria (contain more than \Rfunarg{nBases} \texttt{N} bases, are shorter than \Rfunarg{minLength} or have a dinucleotide complexity of less than \Rfunarg{complexity}-times the average complexity of the human genome sequence).
+% \end{enumerate}
+% \end{quote}
+% 
+% The dinucleotide complexity is calculated in bits as Shannon entropy using the following formula $-\sum_i f_i \cdot \log_2 f_i$, where $f_i$ is the frequency of dinucleotide $i$ ($i=1, 2, ..., 16$).
+
 
 \section{Session information}
 The output in this vignette was produced under:
