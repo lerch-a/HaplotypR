@@ -1,19 +1,17 @@
 citHeader("Please use the reference below to cite HaplotypR.")
 
-citEntry(entry="article",
-title = “Development of amplicon deep sequencing markers and data analysis pipeline for genotyping multi-clonal malaria infections”,
-	 author=personList(as.person("Anita Lerch")),
-	 journal="BMC Genomics",
-         volume=“18”,
-         number=“1”,
-         pages="864",
-	 year=2017,
-	 note="PMID:25417205",
-         doi="10.1186/s12864-017-4260-y",
-	 textVersion="Lerch, A. et al. Development of amplicon deep sequencing markers and data analysis pipeline for genotyping multi-clonal malaria infections. BMC Genomics, 18(1), (2017)”
+citEntry(
+	entry="article",
+	title = "Development of amplicon deep sequencing markers and data analysis pipeline for genotyping multi-clonal malaria infections",
+	author = "Anita Lerch",
+	journal = "BMC Genomics",
+	volum = "18",
+	number = "1",
+	pages = "864",
+	year = 2017,
+	doi = "10.1186/s12864-017-4260-y",
+	textVersion = "Lerch, A. et al (2017). Development of amplicon deep sequencing markers and data analysis pipeline for genotyping multi-clonal malaria infections. BMC Genomics, 18(1)."
 )
 
-citFooter("This free open-source software implements academic
-research by the authors and co-workers. If you use it,
-please support the project by citing the appropriate
-journal articles.")
+citFooter("This free open-source software implements academic research by the authors and co-workers. If you use it, please support the project by citing the appropriate journal articles.")
+
