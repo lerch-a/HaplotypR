@@ -152,7 +152,7 @@ dePlexMarker <- do.call(rbind, dePlexMarker)
 dePlexMarker <- merge.data.frame(dePlexSample[,c("SampleID", "SampleName", "BarcodePair")], dePlexMarker, by="BarcodePair")
 
 # save summary table
-write.table(dePlexMarker, file.path(out, "demultiplexMarkerSummary.txt"), sep="\t", row.names=F)
+write.table(dePlexMarker, file.path(outputDir, "demultiplexMarkerSummary.txt"), sep="\t", row.names=F)
 ```
 
 Trim and fuse paired reads
