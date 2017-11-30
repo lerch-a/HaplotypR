@@ -72,45 +72,6 @@ options('useFancyQuotes' = FALSE, continue=" ", digits=3)
 
 \newpage
 
-
-\section{Introduction}
-
-% The \Biocpkg{HaplotypR} package integrates the functionality of several \R{} packages (such as \Biocpkg{Rswarm} \cite{swarm} and \Biocpkg{Rvsearch} \cite{swarm}) and external software (e.g. \software{bowtie}, through the \Biocpkg{Rbowtie} package). The package aims to .
-
-
-\section{Preliminaries}
-
-\subsection{Citing \Biocpkg{HaplotypR}}
-If you use \Biocpkg{HaplotypR} \cite{HaplotypR} in your work, you can cite it as follows:
-<<cite, eval=TRUE>>=
-citation("HaplotypR")
-@
-
-\subsection{Installation}
-\label{sec:Installation}
-# <<install, eval=FALSE>>=
-# source("http://www.bioconductor.org/biocLite.R")
-# biocLite("HaplotypR")
-# @
-
-
-\newpage
-\section{Quick Start}
-
-
-Before you can use any \Biocpkg{HaplotypR} commands you have to load the package by typing
-<<loadHaplotypRLibrary, eval=FALSE>>=
-library(HaplotypR)
-@ 
-
-\subsection{Sample \Biocpkg{HaplotypR} session}
-\label{sec:SampleSession}
-<<SampleSession1, eval=TRUE>>=
-library(HaplotypR)
-file.copy(system.file(package="HaplotypR", "extdata"), ".", recursive=TRUE)
-@
-
-
 \section{Session information}
 The output in this vignette was produced under:
 <<sessionInfo, results=tex, echo=FALSE>>=
