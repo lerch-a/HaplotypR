@@ -1,3 +1,3 @@
 # Foo
 
-[Link to README page](README)
+make a [link](README.md)
