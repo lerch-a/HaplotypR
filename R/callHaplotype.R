@@ -29,6 +29,11 @@ createContingencyTable <- function(inputFiles, dereplicated=F, inputFormat="fast
     else
       inputReads <- readFastq(inputFiles[i])
     
+    # remove reads with Ns
+    idx <- grep("N", sread(inputReads), invert=T)
+    inputReads <- inputReads[idx]
+    rm(idx)
+    
     # calculate amplicon frequencies
     if(!dereplicated){
       readFreq <- tables(sread(inputReads), n=NULL)$top
