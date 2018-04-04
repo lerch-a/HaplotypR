@@ -1,5 +1,11 @@
 
-createContingencyTable <- function(inputFiles, dereplicated=F, inputFormat="fasta", outputDir=".", sampleNames, replicatNames=NULL, freqSplitPattern="_", haplotypeUIDFile=NULL, progressReport=message){
+# compute frequency matrix F of size (N x M)
+# rows correspond to N samples
+# cols correspond to M haplotypes 
+# 0.0 <= f_ij <= 1.0 for (i, j) in (N x M)  
+createContingencyTable <- function(inputFiles, dereplicated=F, inputFormat="fasta", 
+                                   outputDir=".", sampleNames, replicatNames=NULL, freqSplitPattern="_", 
+                                   haplotypeUIDFile=NULL, progressReport=message) {
   require(ShortRead)
   require(Biostrings)
   
@@ -75,7 +81,9 @@ createContingencyTable <- function(inputFiles, dereplicated=F, inputFormat="fast
   return(contingencyTable)
 }
 
-callHaplotype <- function(x, detectability=1/100, minHaplotypCoverage=3, minReplicate=2, minSampleCoverage=300, reportBackground=T, defineBackground=NULL, ...) {
+# call haplotype, if passes all filters 
+callHaplotype <- function(x, detectability=1/100, minHaplotypCoverage=3, minReplicate=2, 
+                          minSampleCoverage=300, reportBackground=T, defineBackground=NULL, ...) {
 
   # check minHaplotypCoverage argument
   if(minHaplotypCoverage < 3){
@@ -135,10 +143,9 @@ callHaplotype <- function(x, detectability=1/100, minHaplotypCoverage=3, minRepl
   return(x)
 }
 
-createFinalHaplotypTable <- function(outputDir=outputDir, sampleTable=procReads, 
-                                     snpList=snpLst, postfix=postfix, 
-                                     minHaplotypCoverage=minCov, minReplicate=minOccHap, 
-                                     detectability=detectionLimit, minSampleCoverage=minCovSample){
+# compute final table of called haplotypes 
+createFinalHaplotypeTable <- function(outputDir, sampleTable, markerTab, snpList, postfix, 
+                                     minHaplotypCoverage=2, minReplicate=3, detectability=0.01, minSampleCoverage=25) {
   
   outFreqFiles <- file.path(outputDir, "frequencyFiles")
   dir.create(outFreqFiles)
