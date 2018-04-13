@@ -21,7 +21,6 @@ option_list <- list(
                 help="Directory with demultiplexed sample files."),
     make_option(c("-v", "--verbose"), action="store_true", default=FALSE, 
                 help="Run verbosely.")
-    
 )
 opt = parse_args(OptionParser(option_list=option_list))
 
@@ -110,7 +109,6 @@ if (!dir.exists(processed_reads_dir)) {
     rownames(processed_reads) = 1:length(rownames(processed_reads))
     processed_reads[["ReadFile"]] = list.files(processed_reads_dir, full.names=TRUE)
 }
-
 if (opt$verbose) { 
     cat("\nprocessed_reads:\n")
     print(head(processed_reads))
@@ -155,7 +153,6 @@ if (!file.exists(snps_file)) {
         snp_list[[marker]] = snp_df[snp_df$Chr == marker,]
     }
 }
-
 if (opt$verbose) { 
     cat("\nsnps_df:\n")
     print(head(snp_df))
@@ -182,7 +179,7 @@ haplotypes = createFinalHaplotypeTable(outputDir=opt$output_dir,
 # read in contingency table and melt
 cat("\nwriting final haplotypes table to file...\n")
 for (amplicon in amplicon_df$MarkerID) { 
-    coverage_mat = read.table(paste0("contingencyTable_", amplicon, "_bind190_120.txt"))
+    coverage_mat = read.table(paste0("contingencyTable_", amplicon, postfix, ".txt"))
     coverage_mat[["haplotype_index"]] = rownames(coverage_mat)
     coverage_mat_melted = melt(coverage_mat, id.vars=c("haplotype_index","seq"))
     coverage_mat_melted = coverage_mat_melted[coverage_mat_melted$value > 0,]
