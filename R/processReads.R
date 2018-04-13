@@ -73,9 +73,11 @@ demultiplexReads <- function(fastqFileFwd, fastqFileRev, barcodeFileFwd, barcode
   
   # Format output
   tab <- as.data.frame(table(sumDemultiplex), stringsAsFactors=F)
+  #print(tab)
   colnames(tab) <- c("BarcodePair", "ReadNumbers")
 
   outfiles <- list.files(outputDir)
+  #print(outfiles)
   names(outfiles) <- sub("_R..fastq.gz$", "", outfiles)
   outFileR1 <- outfiles[grep("_R1.fastq.gz$", outfiles)][tab$BarcodePair]
   outFileR2 <- outfiles[grep("_R2.fastq.gz$", outfiles)][tab$BarcodePair]
@@ -87,7 +89,7 @@ demultiplexReads <- function(fastqFileFwd, fastqFileRev, barcodeFileFwd, barcode
 
 
 removePrimer <- function(fastqFileR1, fastqFileR2, outputFile, primerFwd, primerRev, 
-                          max.mismatch=0, with.indels=F, outputPrimerSequence=F, progressReport=message){
+                          max.mismatch=0, with.indels=F, outputPrimerSequence=F, progressReport=message) {
   
   # check and set progress report function
   if(!is.function(progressReport))
@@ -103,7 +105,7 @@ removePrimer <- function(fastqFileR1, fastqFileR2, outputFile, primerFwd, primer
   mode <- "w"
   totalReads <- 0
   filteredReads <- 0
-  while(length(sr1 <- yield(f1)) > 0){
+  while(length(sr1 <- yield(f1)) > 0) {
     sr2 <- yield(f2)
     totalReads <- totalReads+length(sr1)
     
@@ -156,13 +158,14 @@ removePrimer <- function(fastqFileR1, fastqFileR2, outputFile, primerFwd, primer
 }
 
 
-bindAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, read1Length=NULL, read2Length=read1Length, progressReport=message){
+bindAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, read1Length=NULL, read2Length=read1Length, 
+                              progressReport=message) {
   
   if(length(fastqFileR1) != length(fastqFileR2))
     stop("Vector length of fastqFileR1 and fastqFileR2 not identical.")
   
   
-  tab <- lapply(seq_along(fastqFileR1), function(i){
+  tab <- lapply(seq_along(fastqFileR1), function(i) {
     
     # check and set progress report function
     if(!is.function(progressReport))

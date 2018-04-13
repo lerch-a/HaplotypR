@@ -1,8 +1,9 @@
 
-calculateMismatchFrequencies <- function(fastqFiles, referenceSequence, method=c("pairwiseAlignment", "compareDNAString"), excludeSNPList=NULL, minCoverage=50L, progressReport=message){
+calculateMismatchFrequencies <- function(fastqFiles, referenceSequence, method=c("pairwiseAlignment", "compareDNAString"), 
+                                         excludeSNPList=NULL, minCoverage=50L, progressReport=message) {
 
   method <- match.arg(method)
-  seqErrC <- lapply(seq_along(fastqFiles), function(i){
+  seqErrC <- lapply(seq_along(fastqFiles), function(i) {
     # check and set progress report function
     if(!is.function(progressReport))
       progressReport <- message

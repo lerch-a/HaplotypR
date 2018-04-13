@@ -1,42 +1,50 @@
 
 
-checkChimeras <- function(representativesFile, method="vsearch", progressReport=message){
-  
-  # sort representatives 
-  sortfile <- unlist(lapply(seq_along(representativesFile), function(i){
-    #vsearch --sortbysize R-1_Rep1.representatives.fasta --output R-1_Rep1.representatives_sortbysize.fasta
-    sr1 <- readFasta(representativesFile[i])
-    clusterSize <- as.integer(do.call(rbind, strsplit(as.character(id(sr1)), "_"))[,2])
-    sr1 <- sr1[order(clusterSize, decreasing=T)]
-    sortfile <- sub(".fasta", "_sort.fasta", representativesFile[i])
-    writeFasta(ShortRead(sread(sr1), BStringSet(sub("_", ";size=", as.character(id(sr1))))), sortfile)
-    return(sortfile)
-  }))
-  
-  nonchimerafile <- sub("_sort.fasta", "_nonchimera.fasta", sortfile)
-  chimerafile <- sub("_sort.fasta", "_chimera.fasta", sortfile)
-  borderfile <- sub("_sort.fasta", "_bordchimera.fasta", sortfile)
-  resfile <- sub("_sort.fasta", "_chimeraResults.txt", sortfile)
-  # vsearch --uchime_denovo R-1_Rep1.representatives_nonchimeras.fasta --nonchimeras R-1_Rep1.representatives_nonchimeras2.fasta
-  syscall <- paste("--uchime_denovo ", sortfile,"--mindiffs", 3, "--minh", 0.2, "--nonchimeras", nonchimerafile, "--chimeras", chimerafile, "--borderline", borderfile, "--uchimeout", resfile, sep=" ")
-  
-  # check and set progress report function
-  if(!is.function(progressReport))
-    progressReport <- message
-  
-  require(Rvsearch)
-  #Rvsearch:::.vsearchBin(args=syscall)
-  lapply(seq_along(syscall), function(i){ 
-    msg <- paste("Processing file", basename(representativesFile[i]), "...", sep=" ")
-    progressReport(detail=msg, value=i)
-    Rvsearch:::.vsearchBin(args=syscall[i])
-  })
-  
-  return(cbind(NonchimeraFile=nonchimerafile, ChimeraFile=chimerafile, BorderchimeraFile=borderfile, ChimeraResultsFile=resfile))
+checkChimeras <- function(representativesFile, method="vsearch", progressReport=message) {
+    # sort representatives 
+    sortfile <- unlist(lapply(seq_along(representativesFile), function(i) {
+        sortfile <- sub(".fasta", "_sort.fasta", representativesFile[i])
+        if (!file.exists(sortfile)) { 
+            #vsearch --sortbysize R-1_Rep1.representatives.fasta --output R-1_Rep1.representatives_sortbysize.fasta
+            sr1 <- readFasta(representativesFile[i])
+            clusterSize <- as.integer(do.call(rbind, strsplit(as.character(id(sr1)), "_"))[,2])
+            sr1 <- sr1[order(clusterSize, decreasing=T)]
+            writeFasta(ShortRead(sread(sr1), BStringSet(sub("_", ";size=", as.character(id(sr1))))), sortfile)
+        } 
+        return(sortfile)
+    }))
+    
+    nonchimerafile <- sub("_sort.fasta", "_nonchimera.fasta", sortfile)
+    chimerafile <- sub("_sort.fasta", "_chimera.fasta", sortfile)
+    borderfile <- sub("_sort.fasta", "_bordchimera.fasta", sortfile)
+    resfile <- sub("_sort.fasta", "_chimeraResults.txt", sortfile)
+    # vsearch --uchime_denovo R-1_Rep1.representatives_nonchimeras.fasta --nonchimeras R-1_Rep1.representatives_nonchimeras2.fasta
+    syscall <- paste("--uchime_denovo ", sortfile,"--mindiffs", 3, "--minh", 0.2, "--nonchimeras", nonchimerafile, "--chimeras", chimerafile, "--borderline", borderfile, "--uchimeout", resfile, sep=" ")
+    
+    # check and set progress report function
+    if(!is.function(progressReport))
+        progressReport <- message
+    
+    require(Rvsearch)
+    files = c(nonchimerafile, chimerafile, borderfile, resfile)
+    #Rvsearch:::.vsearchBin(args=syscall)
+    lapply(seq_along(syscall), function(i) { 
+        if (!all(sapply(files, file.exists))) {
+            msg <- paste("Processing file", basename(representativesFile[i]), "...", sep=" ")
+            progressReport(detail=msg, value=i)
+            Rvsearch:::.vsearchBin(args=syscall[i])
+        } else { 
+            msg <- paste("Retrieving existing files for", basename(representativesFile[i]), "...", sep=" ")
+            progressReport(detail=msg, value=i)
+        }
+    })
+    
+    return(cbind(NonchimeraFile=nonchimerafile, ChimeraFile=chimerafile, BorderchimeraFile=borderfile, ChimeraResultsFile=resfile))
 }
 
 
-createHaplotypOverviewTable <- function(allHaplotypesFilenames, clusterFilenames, chimeraFilenames, referenceSequence=NULL, snpList){
+createHaplotypOverviewTable <- function(allHaplotypesFilenames, clusterFilenames, chimeraFilenames, referenceSequence=NULL, 
+                                        snpList, verbose=FALSE){
   
   sr1 <- readFasta(allHaplotypesFilenames)
   overviewHap <- data.frame(HaplotypesName=as.character(id(sr1)))
@@ -46,18 +54,19 @@ createHaplotypOverviewTable <- function(allHaplotypesFilenames, clusterFilenames
   ## chimera type
   resfile <- chimeraFilenames[,"ChimeraResultsFile"]
   #sampleName <- sub(".representatives_chimeraResults.fasta", "", basename(resfile))
-  haplotypes <- lapply(seq_along(resfile), function(i){
-  	res <- read.delim(resfile[i], header = F)
-  	chimScore <- res[,1]
-  	vec <- do.call(rbind, strsplit(as.character(res[,2]), ";size="))
-  	clusterResp <- vec[,1]
-  	clusterSize <- as.integer(vec[,2])
-  	clusterResp <- clusterResp[clusterSize>1]
-  	chimScore <- chimScore[clusterSize>1]
-  	if(length(clusterResp)<0){
-  		return(list(Chimera=character(0), NonChimera=character(0)))
-  	}
-  	return(list(Chimera=clusterResp[chimScore>0], NonChimera=clusterResp[chimScore==0]))
+  haplotypes <- lapply(seq_along(resfile), function(i) {
+    if (verbose) cat(paste0("Retrieving ", resfile[i], "...\n"))
+    tryCatch({
+            res <- read.delim(resfile[i], header = F)
+            chimScore <- res[,1]
+            vec <- do.call(rbind, strsplit(as.character(res[,2]), ";size="))
+            clusterResp <- vec[,1]
+            clusterSize <- as.integer(vec[,2])
+            clusterResp <- clusterResp[clusterSize>1]
+            chimScore <- chimScore[clusterSize>1]
+            return(list(Chimera=clusterResp[chimScore>0], NonChimera=clusterResp[chimScore==0])) }, 
+        warning=function (w) {  }, 
+        error=function(e) { return(list(Chimera=character(0), NonChimera=character(0))) })
   })
   #names(haplotypes) <- sampleName
   chim <- table(unlist(lapply(haplotypes, "[[", 1)))
