@@ -89,17 +89,22 @@ if (opt$verbose) {
 } 
 
 # trim and merge paired-end reads 
-read_len_fwd = 210
-read_len_rev = 180
-postfix <- sprintf("_bind%.0f_%.0f", read_len_fwd, read_len_rev)
+read_lens_fwd = list(csp=185, sera2=175)
+read_lens_rev = list(csp=103, sera2=84)
+source("/Users/tfarrell/Tools/HaplotypR/R/processReads.R")
+postfix = list()
+for (amplicon in amplicon_df$MarkerID) { 
+    postfix[[amplicon]] <- sprintf("_bind%.0f_%.0f", read_lens_fwd[[amplicon]], read_lens_rev[[amplicon]])
+} 
 processed_reads_dir = file.path("processed_reads")
 if (!dir.exists(processed_reads_dir)) { 
-    cat("\nprocessing reads...")
+    cat("\nprocessing reads...\n")
     dir.create(processed_reads_dir)
     # merge paired-end reads
     processed_reads = bindAmpliconReads(as.character(demultiplexed_amplicons$FileR1), 
                                         as.character(demultiplexed_amplicons$FileR2), 
-                                        processed_reads_dir, read1Length=read_len_fwd, read2Length=read_len_rev)
+                                        processed_reads_dir, read1Length=read_lens_fwd, read2Length=read_lens_rev,
+                                        marker=as.character(demultiplexed_amplicons$MarkerID))
     processed_reads = cbind(demultiplexed_amplicons[,c("SampleID","SampleName","BarcodePair","MarkerID")], 
                             processed_reads)
 } else {
@@ -121,8 +126,10 @@ cat("\ncomputing mismatch rates and calling SNPs...\n")
 min_mismatch_rate = 0.5
 min_genotype_occurence = 2
 ref_seq = as.character(amplicon_df$ReferenceSequence)
-ref_seq = DNAStringSet(paste(substr(ref_seq, 1, read_len_fwd), 
-                             substr(ref_seq, nchar(ref_seq) + 1 - read_len_rev, nchar(ref_seq)), sep=""))
+for (marker in amplicon_df$MarkerID) { 
+    ref_seq = DNAStringSet(paste(substr(ref_seq, 1, read_lens_fwd[[marker]]), 
+                                 substr(ref_seq, nchar(ref_seq) + 1 - read_lens_rev[[marker]], nchar(ref_seq)), sep=""))
+}
 names(ref_seq) = amplicon_df$MarkerID
 snps_file = "snps.tsv"
 if (!file.exists(snps_file)) { 
@@ -174,17 +181,5 @@ haplotypes = createFinalHaplotypeTable(outputDir=opt$output_dir,
                                        minHaplotypCoverage=min_haplotype_coverage,
                                        minSampleCoverage=min_sample_coverage,
                                        detectability=detection_limit, include_seq=TRUE, 
-                                       verbose=TRUE)
-
-# read in contingency table and melt
-cat("\nwriting final haplotypes table to file...\n")
-for (amplicon in amplicon_df$MarkerID) { 
-    coverage_mat = read.table(paste0("contingencyTable_", amplicon, postfix, ".txt"))
-    coverage_mat[["haplotype_index"]] = rownames(coverage_mat)
-    coverage_mat_melted = melt(coverage_mat, id.vars=c("haplotype_index","seq"))
-    coverage_mat_melted = coverage_mat_melted[coverage_mat_melted$value > 0,]
-    names(coverage_mat_melted) = c("haplotype_index","seq","Solexa_ID","coverage")
-    write.table(coverage_mat_melted[,c("Solexa_ID","haplotype_index","coverage","seq")], 
-                paste0("seq.", amplicon, ".haplotypR.raw.tsv"), quote = FALSE, row.names=FALSE)
-} 
-cat("\ndone.")
+                                       verbose=TRUE, just_contingency_table=FALSE)
+cat("\ndone.\n\n")
