@@ -143,19 +143,21 @@ callHaplotype <- function(x, detectability=1/100, minHaplotypCoverage=3, minRepl
   } 
   
   # check for noise haplotype
-  #minCov <- colSums(x) * detectability
-  #minCov[minCov < minHaplotypCoverage] <- minHaplotypCoverage
-  #if (dim(x)[1] > 0) {
-  #	noiseIdx <- (rowSums(t(t(x) / minCov) >= 1, na.rm=TRUE) < minReplicate) # only haplotypes present in min replicates
-  #	lowCnt <- colSums(x[noiseIdx,, drop=F])
-  #	x <- x[!noiseIdx,, drop=F]
-  #} else {
-  #	lowCnt <- 0
-  #}
-  #if (verbose) {
-  #    cat("\nafter checking for noise haplotypes...\n")
-  #    print(head(x))  
-  #} 
+  if (FALSE) { 
+      minCov <- colSums(x) * detectability
+      minCov[minCov < minHaplotypCoverage] <- minHaplotypCoverage
+      if (dim(x)[1] > 0) {
+      	noiseIdx <- (rowSums(t(t(x) / minCov) >= 1, na.rm=TRUE) < minReplicate) # only haplotypes present in min replicates
+      	lowCnt <- colSums(x[noiseIdx,, drop=F])
+      	x <- x[!noiseIdx,, drop=F]
+      } else {
+      	lowCnt <- 0
+      }
+      if (verbose) {
+          cat("\nafter checking for noise haplotypes...\n")
+          print(head(x))  
+      } 
+  }
   # add background to haplotyp counts
   if (reportBackground) {
     if (dim(x)[1] > 0)
@@ -187,7 +189,7 @@ createFinalHaplotypeTable <- function(outputDir, sampleTable, markerTab, snpLst,
         coverage_mat <- createContingencyTable(as.character(samTab$ReadFile), dereplicated=F, 
                                       inputFormat="fastq", outputDir=outFreqFiles,
                                       sampleNames=as.character(samTab$SampleID), replicatNames=NULL, 
-                                      haplotypeUIDFile=NULL, include_seq=include_seq, verbose=verbose)
+                                      haplotypeUIDFile=NULL, include_seq=FALSE, verbose=verbose)
         if (verbose) cat("\nwriting contingency table...\n")
         saveRDS(coverage_mat, file=contingency_file)
     } else { 
@@ -220,20 +222,17 @@ createFinalHaplotypeTable <- function(outputDir, sampleTable, markerTab, snpLst,
         if (!file.exists(overview_haplotype_table_file)) { 
             # create an overview table
             if (verbose) cat("\ncomputing haplotype overview table...\n")
-            overviewHap <- createHaplotypOverviewTable(fnAllSeq,
-                                                       clusterFilenames, chimeraFilenames,
+            overviewHap <- createHaplotypOverviewTable(fnAllSeq, clusterFilenames, chimeraFilenames,
                                                        refSeq[marker], potSNPLst, verbose=verbose)
             # label final haplotype
             overviewHap$FinalHaplotype <- factor(NA, levels = c("Singelton", "Chimera", "Indels", as.character(marker)))
             overviewHap[overviewHap$representatives, "FinalHaplotype"] <- as.character(marker)
             overviewHap[overviewHap$singelton, "FinalHaplotype"] <- "Singelton"
-            overviewHap[!is.na(overviewHap$indels) & overviewHap$indels & overviewHap$representatives, "FinalHaplotype"] <- "Indels"
+            #overviewHap[!is.na(overviewHap$indels) & overviewHap$indels & overviewHap$representatives, "FinalHaplotype"] <- "Indels"
             overviewHap[!is.na(overviewHap$chimeraScore) & is.na(overviewHap$nonchimeraScore), "FinalHaplotype"] <- "Chimera"
             # cluster identical SNP patterns
             idx <- overviewHap$FinalHaplotype == as.character(marker)
             snps <- unique(overviewHap$snps[idx])
-            #if (verbose) print(snps)
-            #if (verbose) print(paste(marker, seq_along(snps), sep="-"))
             names(snps) <- paste(marker, seq_along(snps), sep="-")
             levels(overviewHap$FinalHaplotype) <- c(levels(overviewHap$FinalHaplotype), names(snps))
             overviewHap$FinalHaplotype[idx] <- names(snps)[match(overviewHap$snps[idx], snps)]
@@ -244,13 +243,13 @@ createFinalHaplotypeTable <- function(outputDir, sampleTable, markerTab, snpLst,
             if (verbose) cat("\nreading in haplotype overview table...\n")
             overviewHap = read.table(overview_haplotype_table_file)
         }
-        if (FALSE) {  
+        if (verbose) {  
             cat("\noverview table:\n")
             print(head(overviewHap))
         } 
         suppressWarnings(suppressMessages(library(dplyr)))
         # compute filtered overview table, joined w/ uid coverage
-        overview_filtered = overviewHap[sapply(overviewHap["FinalHaplotype"], function (x) grepl(as.character(marker), x)),c("HaplotypesName","FinalHaplotype","snps")]
+        overview_filtered = overviewHap[sapply(overviewHap["FinalHaplotype"], function (x) grepl(as.character(marker), x)), c("HaplotypesName","FinalHaplotype","snps")]
         colnames(overview_filtered) = c("uid","haplotype_index","haplotype") 
         overview_filtered = merge(overview_filtered, uid_cov, by="uid")[,c("uid","haplotype_index","coverage","haplotype")]
         # compute clustered overview table, and write to file
@@ -277,10 +276,11 @@ createFinalHaplotypeTable <- function(outputDir, sampleTable, markerTab, snpLst,
             })
             if (verbose) cat("\nbuilding raw final haplotype table...\n")
             haplotypesSample <- do.call(cbind, haplotypesSample)
-            haplotypesSample <- haplotypesSample[rowSums(haplotypesSample) > 0,]
+            haplotypesSample <- haplotypesSample[rowSums(haplotypesSample) > 1,]
             colnames(haplotypesSample) <- sub(".representatives.fasta", "", basename(repfile))
             overviewHap <- overviewHap[rownames(haplotypesSample),]
             rownames(haplotypesSample) <- overviewHap[rownames(haplotypesSample), "FinalHaplotype"]
+            if (verbose) print(head(haplotypesSample))
             if (verbose) cat("\nwriting raw final haplotype table...\n")
             saveRDS(cbind(HaplotypNames=rownames(haplotypesSample), haplotypesSample), 
                     file=raw_final_haplotype_table_file)

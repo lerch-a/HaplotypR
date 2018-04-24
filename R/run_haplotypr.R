@@ -125,11 +125,7 @@ source("/Users/tfarrell/Tools/HaplotypR/R/callHaplotype.R")
 cat("\ncomputing mismatch rates and calling SNPs...\n")
 min_mismatch_rate = 0.5
 min_genotype_occurence = 2
-ref_seq = as.character(amplicon_df$ReferenceSequence)
-for (marker in amplicon_df$MarkerID) { 
-    ref_seq = DNAStringSet(paste(substr(ref_seq, 1, read_lens_fwd[[marker]]), 
-                                 substr(ref_seq, nchar(ref_seq) + 1 - read_lens_rev[[marker]], nchar(ref_seq)), sep=""))
-}
+ref_seq = DNAStringSet(as.character(amplicon_df$ReferenceSequence))
 names(ref_seq) = amplicon_df$MarkerID
 snps_file = "snps.tsv"
 if (!file.exists(snps_file)) { 
