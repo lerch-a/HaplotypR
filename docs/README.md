@@ -76,11 +76,26 @@ Run HaplotypR GUI:
 runShinyApp()
 ```
 
-# Run HaplotypR on R command line (without shiny app)
+# Run HaplotypR on R command line (without shiny app) 
 
 ```bash
-Rscript ~/tools/HaplotypR/R/run_haplotypr.R \
-	--output_dir ~/project/output/ \
-	--amplicons_file ~/project/metadata/amplicon_primer_set.txt \
-	--samples_dir ~/project/data/ --verbose
+Usage: ~/tools/HaplotypR/R/run_haplotypr.R [options]
+
+
+Options:
+        -o OUTPUT_DIR, --output_dir=OUTPUT_DIR
+                Directory where to save the output.
+
+        -p AMPLICONS_FILE, --amplicons_file=AMPLICONS_FILE
+                File with fwd/rev primers and reference seqs listed by amplicon.
+
+        -s SAMPLES_DIR, --samples_dir=SAMPLES_DIR
+                Directory with demultiplexed sample files.
+
+        -v, --verbose
+                Run verbosely.
+
+        -h, --help
+                Show this help message and exit
+
 ```
