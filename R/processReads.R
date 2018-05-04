@@ -155,8 +155,7 @@ removePrimer <- function(fastqFileR1, fastqFileR2, outputFile, primerFwd, primer
            FileR1=paste(outputFile, "_F.fastq.gz", sep=""), FileR2=paste(outputFile, "_R.fastq.gz", sep="")))
 }
 
-
-bindAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, read1Length=NULL, read2Length=read1Length, progressReport=message){
+mergeAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, mergePrefix="_merge", progressReport=message){
   
   if(length(fastqFileR1) != length(fastqFileR2))
     stop("Vector length of fastqFileR1 and fastqFileR2 not identical.")
@@ -170,8 +169,34 @@ bindAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, read1Length=N
     msg <- paste("Processing file", basename(fastqFileR1[i]), "and", basename(fastqFileR2[i]))
     progressReport(detail=msg, value=i)
     
-    outputFile <- file.path(outputDir, sub("\\.fastq.gz", "", basename(fastqFileR1[i])))
-    outputFile <- paste(outputFile, "_bind", read1Length, "_", read2Length, ".fastq.gz", sep="")
+    outputFile <- file.path(outputDir, sub("_F\\.fastq.gz", "", basename(fastqFileR1[i])))
+    outputFile <- paste(outputFile, mergePrefix, ".fastq.gz", sep="")
+    args <- paste("--fastq_mergepairs", fastqFileR1[i], "--reverse", fastqFileR2[i],
+                  "--fastqout", outputFile, "--fastq_truncqual", 1, "--fastq_maxns", 0)
+    Rvsearch:::.vsearchBin(args=args)
+    return(c(numRead=NA, ReadFile=outputFile))
+  })
+  tab <- do.call(rbind, tab)
+  return(tab)
+}
+
+
+bindAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, read1Length=NULL, read2Length=read1Length, mergePrefix="_bind", progressReport=message){
+  
+  if(length(fastqFileR1) != length(fastqFileR2))
+    stop("Vector length of fastqFileR1 and fastqFileR2 not identical.")
+  
+  
+  tab <- lapply(seq_along(fastqFileR1), function(i){
+    
+    # check and set progress report function
+    if(!is.function(progressReport))
+      progressReport <- message
+    msg <- paste("Processing file", basename(fastqFileR1[i]), "and", basename(fastqFileR2[i]))
+    progressReport(detail=msg, value=i)
+    
+    outputFile <- file.path(outputDir, sub("_F\\.fastq.gz", "", basename(fastqFileR1[i])))
+    outputFile <- paste(outputFile, mergePrefix, read1Length, "_", read2Length, ".fastq.gz", sep="")
     
     f1 <- FastqStreamer(fastqFileR1[i])
     f2 <- FastqStreamer(fastqFileR2[i])

@@ -31,7 +31,7 @@ ui <- shinyUI(
              navbarMenu("Process Reads",
                         tabPanel("De-multiplex by Sample", demultiplexSample()),
                         tabPanel("De-multiplex by Marker", demultiplexMarker()),
-                        tabPanel("Concatenate Paired Reads", concatreads())
+                        tabPanel("Merge Paired Reads", concatreads())
                         ),
              tabPanel("Call Genotypes", callgenotype()),
              tabPanel("Call Haplotypes", callhaplotype())
@@ -213,6 +213,12 @@ server <- shinyServer(function(input, output, session) {
 
   
   ### Concatenate read Tab
+  ### Call Genotyp Tab
+  output$uiMergeSelection <- renderUI({
+    choise <- as.list(c("none", "overlap", "trimconcat"))
+    names(choise) <- c("Choose ...","Merge By Overlap","Merge By Trimming and Concatenating")
+    selectInput("mergeSelected", label=NULL, choices=choise)
+  })
   concatReads <- eventReactive(input$startConcatReads, {
     runConcatReads(input, output, session, volumes)
   })
@@ -238,8 +244,8 @@ server <- shinyServer(function(input, output, session) {
     out <- baseOutDir()
     if(is.null(out)) return(NULL)
     fn <- list.files(out, "processedReadSummary")
-    prj <- do.call(rbind, strsplit(fn, "_bind"))
-    prj <- paste("_bind", sub(".txt", "", prj[,2]), sep="")
+    prj <- do.call(rbind, strsplit(fn, "_merge"))
+    prj <- paste("_merge", sub(".txt", "", prj[,2]), sep="")
     choiseProject <- as.list(prj)
     names(choiseProject) <- prj
     return(choiseProject)

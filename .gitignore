@@ -26,3 +26,5 @@ inst/shinyApp/.Rhistory
 *.bbl
 
 *.blg
+
+docs/.Rhistory

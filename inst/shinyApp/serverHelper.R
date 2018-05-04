@@ -150,7 +150,7 @@ runTruncatePrimer <- function(input, output, session, volumes){
   }
   
   # Run
-  res <- lapply(1:dim(markerTab)[1], function(j){
+  resTa  <- lapply(1:dim(markerTab)[1], function(j){
     mID <- as.character(markerTab[j, "MarkerID"])
     adapterF <- as.character(markerTab[j, "Forward"])
     adapterR <- as.character(markerTab[j, "Reverse"])
@@ -164,14 +164,13 @@ runTruncatePrimer <- function(input, output, session, volumes){
     })
     cbind(BarcodePair=as.character(dePlexFiles$BarcodePair), MarkerID=mID, do.call(rbind, res))
   })
-  res <- do.call(rbind, res)
-  res <- merge.data.frame(dePlexFiles[,c("SampleID", "SampleName","BarcodePair")], res, by="BarcodePair")
+  resTa  <- do.call(rbind, resTa )
+  resTa  <- merge.data.frame(dePlexFiles[,c("SampleID", "SampleName","BarcodePair")], resTa , by="BarcodePair")
   
-  write.table(res, file.path(out, "demultiplexMarkerSummary.txt"), sep="\t", row.names=F)
+  write.table(resTa , file.path(out, "demultiplexMarkerSummary.txt"), sep="\t", row.names=F)
   
-  return(res)
+  return(resTa )
 }
-
 
 
 runConcatReads <- function(input, output, session, volumes){
@@ -195,17 +194,24 @@ runConcatReads <- function(input, output, session, volumes){
   project$marker <- markerTab$MarkerID
   
   # Options
-  wTrim <- isolate(input$withTrim)
-  if(!wTrim){
+  mergeParam <- isolate(input$mergeSelected)
+  if(mergeParam == "overlap"){
     numNtF <- NULL
     numNtR <- NULL
-    concatSuffix <- "_bind_full"
-    project$concatSuffix <- concatSuffix
-  }else{
+    concatSuffix <- "_merge_overlap"
+    refSeq <- DNAStringSet(markerTab$ReferenceSequence)
+    names(refSeq) <- markerTab$MarkerID
+    lapply(seq_along(refSeq), function(i){
+      writeFasta(refSeq[i], file.path(out, paste(names(refSeq)[i], concatSuffix, ".fasta", sep="")))
+    })
+  }else if(mergeParam == "trimconcat"){
     numNtF <- isolate(input$trim_F)
     numNtR <- isolate(input$trim_R)
-    concatSuffix <- sprintf("_bind%.0f_%.0f", numNtF, numNtR)
-    project$concatSuffix <- concatSuffix
+    if(numNtF==0 | numNtR==0){
+      showNotification("Number of nucleotide to trim needs to be larger than 0", closeButton = T, type="error")
+      return(NULL)
+    }
+    concatSuffix <- sprintf("_merge_bind%.0f_%.0f", numNtF, numNtR)
     project$trimParameter <- c(Fwd=numNtF, Rev=numNtR)
     refSeq <- as.character(markerTab$ReferenceSequence)
     refSeq <- DNAStringSet(paste(substr(refSeq, 1,numNtF), substr(refSeq, nchar(refSeq)+1-numNtR, nchar(refSeq)), sep=""))
@@ -214,7 +220,11 @@ runConcatReads <- function(input, output, session, volumes){
     lapply(seq_along(refSeq), function(i){
       writeFasta(refSeq[i], file.path(out, paste(names(refSeq)[i], concatSuffix, ".fasta", sep="")))
     })
+  }else{ #"none"
+    showNotification("Chose an merge option", closeButton = T, type="error")
+    return(NULL)
   }
+  project$concatSuffix <- concatSuffix
   
   # Demultiplexed sample files
   outDePlexMarker <- file.path(out, "demultiplexMarkerSummary.txt")
@@ -247,14 +257,19 @@ runConcatReads <- function(input, output, session, volumes){
   }
   
   # Run
-  #res <- lapply(seq_along(dePlexFiles$FileR1), function(i){
-    #progress$set(message=sprintf('Concatenation of reads in progress. This may take a while...'), detail=NULL, value=i)
-    #outputFile <- file.path(outDir, mID, sub("R1\\.fastq.gz", mID, basename(as.character(dePlexFiles$FileR1)[i])))
-  res <- bindAmpliconReads(as.character(dePlexFiles$FileR1), as.character(dePlexFiles$FileR2), outDir, 
-                      read1Length=numNtF, read2Length=numNtR, progressReport=updateProgress)
-  #})
-#    cbind(BarcodePair=as.character(dePlexFiles$BarcodePair), MarkerID=mID, do.call(rbind, res))
-  #res <- do.call(rbind, res)
+  if(mergeParam == "overlap"){
+    res <- mergeAmpliconReads(as.character(dePlexFiles$FileR1), as.character(dePlexFiles$FileR2), outDir, 
+                              mergePrefix="_merge_overlap", progressReport=updateProgress)
+  }else{
+    #res <- lapply(seq_along(dePlexFiles$FileR1), function(i){
+      #progress$set(message=sprintf('Concatenation of reads in progress. This may take a while...'), detail=NULL, value=i)
+      #outputFile <- file.path(outDir, mID, sub("R1\\.fastq.gz", mID, basename(as.character(dePlexFiles$FileR1)[i])))
+    res <- bindAmpliconReads(as.character(dePlexFiles$FileR1), as.character(dePlexFiles$FileR2), outDir, 
+                        read1Length=numNtF, read2Length=numNtR, mergePrefix="_merge_bind", progressReport=updateProgress)
+    #})
+  #    cbind(BarcodePair=as.character(dePlexFiles$BarcodePair), MarkerID=mID, do.call(rbind, res))
+    #res <- do.call(rbind, res)
+  }
   
   res <- cbind(dePlexFiles[,c("SampleID", "SampleName","BarcodePair", "MarkerID")], res)
   write.table(res, file.path(out, sprintf("processedReadSummary%s.txt", concatSuffix)), sep="\t", row.names=F)
@@ -290,23 +305,19 @@ runCallGenotype <- function(input, output, session, volumes){
   sampleTable <- sampleTable[sampleTable$MarkerID == marker,]
   sampleTable <- sampleTable[!(is.na(sampleTable$ReadFile) | is.na(sampleTable$SampleID)),]
   # Load Reference
-  if(grepl("bind_full.fastq", sampleTable$ReadFile[1])){
-    postfix <- "bind_full"
-    markerTab <- isolate(primer())
-    refSeq <- as.character(markerTab$ReferenceSequence)
-    refSeq <- DNAStringSet(refSeq)
-    names(refSeq) <- markerTab$MarkerID
-    refSeq <- refSeq[grep(marker, markerTab$MarkerID)]
+  if(grepl("merge.fastq", sampleTable$ReadFile[1])){
+    postfix <- "_merge_overlap"
   }else{
-    postfix <- sub("^.*_bind", "_bind", sampleTable$ReadFile[1])
+    postfix <- sub("^.*_merge", "_merge", sampleTable$ReadFile[1])
     postfix <- sub("\\.fastq.*$", "", postfix)
-    fn <- file.path(out, paste(marker, postfix, ".fasta", sep=""))
-    if(!file.exists(fn)){
-      showNotification("Reference sequence not found.", closeButton = T, type="error")
-      return()
-    }
-    refSeq <- readDNAStringSet(fn)
   }
+  fn <- file.path(out, paste(marker, postfix, ".fasta", sep=""))
+  if(!file.exists(fn)){
+    showNotification("Reference sequence not found.", closeButton = T, type="error")
+    return()
+  }
+  refSeq <- readDNAStringSet(fn)
+  
   
   # Configure shiny progress
   progress <- Progress$new(session, min=0, max=length(sampleTable$ReadFile))
@@ -327,10 +338,14 @@ runCallGenotype <- function(input, output, session, volumes){
                                              minMMrate*100, minOccGen, marker, postfix)), sep="\t", row.names=F)
 
   potSNP <- callGenotype(seqErr, minMismatchRate=minMMrate, minReplicate=minOccGen)
-  snpRef <- unlist(lapply(potSNP, function(snp){
-    as.character(subseq(refSeq, start=snp, width=1))
-  }))
-  snpLst <- cbind(Chr=names(refSeq), Pos=potSNP, Ref=snpRef, Alt="N")
+  if(length(potSNP)>0){
+    snpRef <- unlist(lapply(potSNP, function(snp){
+      as.character(subseq(refSeq, start=snp, width=1))
+    }))
+    snpLst <- cbind(Chr=names(refSeq), Pos=potSNP, Ref=snpRef, Alt="N")
+  }else{ # No SNP found
+    snpLst <- cbind(Chr=character(0), Pos=character(0), Ref=character(0), Alt=character(0))
+  }
   write.table(snpLst, file=file.path(out, sprintf("potentialSNPlist_rate%.0f_occ%i_%s%s.txt", 
                                                   minMMrate*100, minOccGen, marker, postfix)), 
               row.names=F, col.names=T, sep="\t", quote=F)
@@ -340,7 +355,8 @@ runCallGenotype <- function(input, output, session, volumes){
       width=1500 , height=600)
   matplot(seqErr, type="p", pch=16, cex=0.4, col="#00000088", ylim=c(0, 1),
           ylab="Mismatch Rate", xlab="Base Position", main=marker, cex.axis=2, cex.lab=2)
-  abline(v=snpLst[,"Pos"], lty=2, col="grey")
+  if(dim(snpLst)[1]>0)
+    abline(v=snpLst[,"Pos"], lty=2, col="grey")
   abline(h=minMMrate, lty=1, col="red")
   dev.off()
 #   return(list(seqErrors=seqErr, potentialSNP=potSNP))
@@ -351,7 +367,8 @@ runCallGenotype <- function(input, output, session, volumes){
   # if(is.null(genLst)) return(NULL)
   matplot(seqErr, type="p", pch=16, cex=0.4, col="#00000088", ylim=c(0, 1),
           ylab="Mismatch Rate", xlab="Base Position", cex.axis=1.5, cex.lab=1.5)
-  abline(v=snpLst[,"Pos"], lty=2, col="grey")
+  if(dim(snpLst)[1]>0)
+    abline(v=snpLst[,"Pos"], lty=2, col="grey")
   abline(h=minMMrate, lty=1, col="red")
 }
 
@@ -379,12 +396,12 @@ runCreateHaplotypOverview <- function(input, output, session, volumes){
   sampleTable <- sampleTable[sampleTable$MarkerID == marker,]
   sampleTable <- sampleTable[!is.na(sampleTable$ReadFile) & !is.na(sampleTable$SampleID),]
   sampleTable <- sampleTable[grep("NA", sampleTable$BarcodePair, invert=T),]
-  if(grepl("_full.fastq", sampleTable$ReadFile[1])){
-    postfix <- "full"
-  }else{
-    postfix <- sub("^.*_bind", "_bind", sampleTable$ReadFile[1])
+  # if(grepl("_full.fastq", sampleTable$ReadFile[1])){
+  #   postfix <- "full"
+  # }else{
+    postfix <- sub("^.*_merge", "_merge", sampleTable$ReadFile[1])
     postfix <- sub("\\.fastq.*$", "", postfix)
-  }
+  # }
   
   # Output dir
   out <- isolate(baseOutDir())
@@ -395,7 +412,7 @@ runCreateHaplotypOverview <- function(input, output, session, volumes){
   # SNP list
   if(input$fSNP){
 	  potSNPLst <- outPotSNP()
-	  if(is.null(potSNPLst)){
+	  if(is.null(potSNPLst) | dim(potSNPLst)[1]==0){
 	    showNotification("Potential SNP list is missing. Did you run 'Call Genotype'?", closeButton = T, type="error")
 	    return(NULL)
 	  }
@@ -453,18 +470,8 @@ runCreateHaplotypOverview <- function(input, output, session, volumes){
 
   # check indels
   if(isolate(input$cIndels)){
-    if(postfix=="full"){
-      markerTab <- isolate(primer())
-      refSeq <- as.character(markerTab$ReferenceSequence)
-      refSeq <- DNAStringSet(refSeq)
-      names(refSeq) <- markerTab$MarkerID
-      refSeq <- refSeq[grep(marker, markerTab$MarkerID)]
-    }else{
-      refSeq <- sub("^.*_bind", "_bind", as.character(sampleTable$ReadFile)[1])
-      refSeq <- sub("fastq.*$", "fasta", refSeq)
-      refSeq <- file.path(out, paste(marker, refSeq, sep=""))
-      refSeq <- readDNAStringSet(refSeq, format="fasta")
-    }
+    refSeq <- file.path(out, paste(marker, postfix, ".fasta", sep=""))
+    refSeq <- readDNAStringSet(refSeq, format="fasta")
   }else{
     refSeq <- NULL
   }
@@ -563,11 +570,14 @@ runCreateHaplotypOverview <- function(input, output, session, volumes){
   						file=file.path(out, sprintf("finalHaplotypeTable_Hcov%.0f_Scov%.0f_occ%i_sens%.4f_%s%s.txt", 
   						                            minCov, minCovSample, minOccHap, maxSensitivity, marker, postfix)), 
   													 sep="\t", row.names=F, col.names=T)
-
+  
   # check replicates
   if(isolate(input$checkReplicates)){
     idx <- split(1:dim(haplotypesSample)[2], sampleTable$SampleName)
     lst <- lapply(idx, function(i){
+      if(length(idx)==0)
+        browser()
+      # message(paste(i, coll))
       tab <- callHaplotype(haplotypesSample[,i, drop=F], minHaplotypCoverage=minCov, 
                            minReplicate=length(i), detectability=maxSensitivity, minSampleCoverage=minCovSample, 
                            reportBackground=T)

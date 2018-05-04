@@ -151,16 +151,15 @@ demultiplexMarker <- function(){
 
 concatreads <- function(){
   fluidPage(
-    titlePanel("Concatenate Paired Reads"),
+    titlePanel("Merge Paired Reads"),
     hr(),
-    h5("Options:"),
-    fluidRow(column(1, checkboxInput("withTrim", label=NULL, value=FALSE)),
-             column(11, h5(helpText("Trim reads.")))
+    fluidRow(column(4, h5(helpText("Select Merge Parameter:"))),
+             column(8, uiOutput("uiMergeSelection"))
     ),
     fluidRow(column(4, h5(helpText("Trim forward read to:"))),
-             column(2, numericInput("trim_F", label=NULL, value=200, min=25, step=1)),
+             column(2, numericInput("trim_F", label=NULL, value=0, min=25, step=1)),
              column(4, h5(helpText("Trim reverse read to:"))),
-             column(2, numericInput("trim_R", label=NULL, value=200, min=25, step=1))
+             column(2, numericInput("trim_R", label=NULL, value=0, min=25, step=1))
     ),
     fluidRow(column(2, actionButton("startConcatReads", "Start ...")),
              column(10)
@@ -181,7 +180,7 @@ callgenotype <- function(){
     fluidRow(column(2, h5(helpText("Select Marker:"))),
              column(10, uiOutput("uiMarkerSelectionG"))),
     h5("Options:"),
-    fluidRow(column(2, numericInput("minMMrate", label=NULL, value=0.5, min=0.5, step=0.05)),
+    fluidRow(column(2, numericInput("minMMrate", label=NULL, value=0.5, min=0.5, step=0.1)),
              column(10, h5(helpText("Minimum mis-match rate to call SNP.")))
     ),
     fluidRow(column(2, numericInput("minOccGen", label=NULL, value=2, min=2, step=1)),
