@@ -11,8 +11,6 @@ inst/shinyApp/www/shiny.css
 
 inst/shinyApp/www/style.css
 
-inst/shinyApp/.Rhistory
-
 *.tex
 
 *.aux
@@ -27,4 +25,4 @@ inst/shinyApp/.Rhistory
 
 *.blg
 
-docs/.Rhistory
+*.Rhistory
