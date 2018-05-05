@@ -235,39 +235,3 @@ bindAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, read1Length=N
   tab <- do.call(rbind, tab)
   return(tab)
 }
-
-extractSwarmClusterReads <- function(swarmFile, swarmRepresentativeFile, fastafile, outputDir){
-  require(Biostrings)
-  require(ShortRead)
-  prefix <- sub(".swarms","", basename(swarmFile))
-  outDir <- file.path(outputDir, prefix)
-  # i <- 1
-  lapply(seq_along(prefix), function(i){
-    dir.create(outDir[i])
-    rep <- readFasta(repfile[i])
-    hapInput <- readFasta(fastafile[i])
-    swarm <- readLines(swarmFile[i])
-    # j <- 1
-    mode <- "w"
-    lapply(seq_along(swarm), function(j){
-      hap <- strsplit(swarm[[j]], " ")[[1]]
-      idx <- id(hapInput) %in% hap
-      #as.character(id(rep[j]))
-      repFreq <- as.integer(strsplit(as.character(id(rep[j])), "_")[[1]][2])
-      if(repFreq>1){ # check frequencie
-        #aln <- pairwiseAlignment(hapInput[idx], sread(rep[j])) # patternQuality, subjectQuality
-        #nmismatch(aln)
-        #mismatchSummary(aln)
-        #nedit(aln)
-        #coverage(aln)
-        #consensusMatrix(aln)
-        #freq <- as.integer(do.call(rbind, strsplit(as.character(id(hapInput[idx])), "_"))[,2])
-        #consensusString(aln, ambiguityMap="N", threshold=0.51) == sread(rep[j])
-        writeFasta(hapInput[idx], file.path(outDir[i], paste(as.character(id(rep[j])), "fasta", sep=".")))
-      }else{
-        writeFasta(hapInput[idx], file.path(outDir[i], "singelton.fasta"), mode=mode)
-        mode <- "a"
-      }
-    })
-  })
-}
