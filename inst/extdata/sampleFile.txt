@@ -15,4 +15,3 @@ R-50_Rep1	Fwd_15	Rev_22	R-50	NA	NA
 R-50_Rep2	Fwd_08	Rev_09	R-50	NA	NA
 R-500_Rep1	Fwd_17	Rev_22	R-500	NA	NA
 R-500_Rep2	Fwd_02	Rev_10	R-500	NA	NA
-devtools::install_github("lerch-a/HaplotypR")
