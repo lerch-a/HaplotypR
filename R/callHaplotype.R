@@ -95,6 +95,9 @@ callHaplotype <- function(x, detectability=1/100, minHaplotypCoverage=3, minRepl
   if(is.null(defineBackground))
     defineBackground <- c("Chimera", "Singelton", "Indels", "Cut-Off_Sample", "Cut-Off_Size")
   
+  # if NA value replace with zero 
+  x[is.na(x)] <- 0
+  
  	# remove low covarage sample
   cov <- colSums(x)
   idx <- cov>=minSampleCoverage

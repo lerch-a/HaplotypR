@@ -47,14 +47,14 @@ createHaplotypOverviewTable <- function(allHaplotypesFilenames, clusterFilenames
   resfile <- chimeraFilenames[,"ChimeraResultsFile"]
   #sampleName <- sub(".representatives_chimeraResults.fasta", "", basename(resfile))
   haplotypes <- lapply(seq_along(resfile), function(i){
-  	res <- read.delim(resfile[i], header = F)
+  	res <- read.delim(resfile[i], header = F, col.names=paste("V", rep(1:18), sep="")) # colnames that empty imput does not give error
   	chimScore <- res[,1]
   	vec <- do.call(rbind, strsplit(as.character(res[,2]), ";size="))
   	clusterResp <- vec[,1]
   	clusterSize <- as.integer(vec[,2])
   	clusterResp <- clusterResp[clusterSize>1]
   	chimScore <- chimScore[clusterSize>1]
-  	if(length(clusterResp)<0){
+  	if(length(clusterResp)==0){
   		return(list(Chimera=character(0), NonChimera=character(0)))
   	}
   	return(list(Chimera=clusterResp[chimScore>0], NonChimera=clusterResp[chimScore==0]))
@@ -159,6 +159,7 @@ createHaplotypOverviewTable <- function(allHaplotypesFilenames, clusterFilenames
 	  snps <- lapply(as.integer(snpList[,"Pos"]), function(n){
 	    as.character(subseq(sread(sr1), start=n, width = 1))
 	  })
+	  # snps <- do.call(paste0, snps)
 	  snps <- apply(do.call(cbind, snps), 1, paste, collapse="")
 	  names(snps) <- as.character(id(sr1))
 	  
