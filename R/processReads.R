@@ -163,7 +163,7 @@ removePrimer <- function(fastqFileR1, fastqFileR2, outputFile, primerFwd, primer
 
 
 bindAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, markerID, read1Length=NULL, read2Length=read1Length, 
-                              progressReport=message) {
+                              postfix="", progressReport=message) {
   
   if(length(fastqFileR1) != length(fastqFileR2))
     stop("Vector length of fastqFileR1 and fastqFileR2 not identical.")
@@ -178,7 +178,7 @@ bindAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, markerID, rea
     
     marker = markerID[i] 
     outputFile <- file.path(outputDir, sub("\\.fastq.gz", "", basename(fastqFileR1[i])))
-    outputFile <- paste(outputFile, "_bind", read1Length[[marker]], "_", read2Length[[marker]], ".fastq.gz", sep="")
+    outputFile <- paste(outputFile, postfix[[marker]], ".fastq.gz", sep="")
     f1 <- FastqStreamer(fastqFileR1[i])
     f2 <- FastqStreamer(fastqFileR2[i])
     
@@ -188,17 +188,16 @@ bindAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, markerID, rea
       sr2 <- yield(f2)
       numReads <- numReads+length(sr1)
       
-      if(!is.null(read1Length))
+      if(!is.null(read1Length[[marker]]))
         sr1 <- narrow(sr1, start=1, width=ifelse(width(sr1)>=read1Length[[marker]], read1Length[[marker]], NA))
       
-      if(!is.null(read2Length))
+      if(!is.null(read2Length[[marker]]))
         sr2 <- reverseComplement(narrow(sr2, start=1, width=ifelse(width(sr2)>=read2Length[[marker]], read2Length[[marker]], NA)))
       else
         sr2 <- reverseComplement(sr2)
         
       writeFastq(ShortReadQ(sread=xscat(sread(sr1), sread(sr2)), 
-                            qual=xscat(quality(quality(sr1)), quality(quality(sr2))), 
-                            id=id(sr1)), 
+                            qual=xscat(quality(quality(sr1)), quality(quality(sr2))), id=id(sr1)), 
                  file=outputFile, mode=mode, compress=T)
       mode <- "a"
     }

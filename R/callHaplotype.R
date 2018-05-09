@@ -76,6 +76,7 @@ createContingencyTable <- function(inputFiles, dereplicated=F, inputFormat="fast
     freq[as.character(l$UID)] <- l$Frequency
     return(freq)
   })
+  print(nchar(env$allHaplotypes[1]))
   contingencyTable <- do.call(cbind, contingencyTable)
   #print(as.character(env$allHaplotypes))
   rownames(contingencyTable) <- names(env$allHaplotypes)
@@ -171,13 +172,15 @@ callHaplotype <- function(x, detectability=1/100, minHaplotypCoverage=3, minRepl
 # compute final table of called haplotypes 
 createFinalHaplotypeTable <- function(outputDir, sampleTable, markerTab, snpLst, refSeq, postfix, 
                                       minHaplotypCoverage=2, minReplicate=3, detectability=0.01, minSampleCoverage=25, 
-                                      include_seq=FALSE, verbose=FALSE, just_contingency_table=TRUE, flag_chimeras=FALSE) {
+                                      include_seq=FALSE, verbose=FALSE, just_contingency_table=TRUE, flag_chimeras=FALSE,
+                                      max_indel_thresholds=list()) {
     source("/Users/tfarrell/Tools/HaplotypR/R/clusterFunction.R")
     source("/Users/tfarrell/Tools/HaplotypR/R/filterHaplotype.R")
   outFreqFiles <- file.path(outputDir, "haplotype_freq_files")
   dir.create(outFreqFiles)
   res <- lapply(markerTab$MarkerID, function(marker) {
       if (verbose) cat(paste0("\nfor ", as.character(marker), ":\n"))
+      max_indel_threshold = max_indel_thresholds[[as.character(marker)]]
     samTab <- sampleTable[sampleTable$MarkerID == marker,]
     potSNPLst <- snpLst[[marker]]
     prefix <- sub(".fastq.gz$", "", basename(as.character(samTab$ReadFile)))
@@ -223,12 +226,13 @@ createFinalHaplotypeTable <- function(outputDir, sampleTable, markerTab, snpLst,
             # create an overview table
             if (verbose) cat("\ncomputing haplotype overview table...\n")
             overviewHap <- createHaplotypOverviewTable(fnAllSeq, clusterFilenames, chimeraFilenames,
-                                                       refSeq[marker], potSNPLst, verbose=verbose)
-            # label final haplotype
+                                                       refSeq[[as.character(marker)]], potSNPLst, verbose=verbose, 
+                                                       max_indel_threshold=max_indel_threshold)
+            # label final haplotype as singleton, chimera, indel or {amplicon}-i for i in {1,...,N}, where N = # valid haplotypes
             overviewHap$FinalHaplotype <- factor(NA, levels = c("Singelton", "Chimera", "Indels", as.character(marker)))
             overviewHap[overviewHap$representatives, "FinalHaplotype"] <- as.character(marker)
             overviewHap[overviewHap$singelton, "FinalHaplotype"] <- "Singelton"
-            #overviewHap[!is.na(overviewHap$indels) & overviewHap$indels & overviewHap$representatives, "FinalHaplotype"] <- "Indels"
+            overviewHap[!is.na(overviewHap$indels) & overviewHap$indels & overviewHap$representatives, "FinalHaplotype"] <- "Indels"
             overviewHap[!is.na(overviewHap$chimeraScore) & is.na(overviewHap$nonchimeraScore), "FinalHaplotype"] <- "Chimera"
             # cluster identical SNP patterns
             idx <- overviewHap$FinalHaplotype == as.character(marker)
@@ -249,15 +253,34 @@ createFinalHaplotypeTable <- function(outputDir, sampleTable, markerTab, snpLst,
         } 
         suppressWarnings(suppressMessages(library(dplyr)))
         # compute filtered overview table, joined w/ uid coverage
+        if (verbose) cat("\ncomputing filtered overview table...\n")
         overview_filtered = overviewHap[sapply(overviewHap["FinalHaplotype"], function (x) grepl(as.character(marker), x)), c("HaplotypesName","FinalHaplotype","snps")]
-        colnames(overview_filtered) = c("uid","haplotype_index","haplotype") 
-        overview_filtered = merge(overview_filtered, uid_cov, by="uid")[,c("uid","haplotype_index","coverage","haplotype")]
-        # compute clustered overview table, and write to file
-        overview_clustered = group_by(overview_filtered, haplotype_index)
-        overview_clustered = data.frame(summarize(overview_clustered, total_coverage=sum(coverage), haplotype=haplotype[which.max(coverage)]))
+        colnames(overview_filtered) = c("uid","haplotypR_index","snps") 
+        overview_filtered = merge(overview_filtered, uid_cov, by="uid")[,c("uid","haplotypR_index","coverage","snps")]
+        # compute clustered overview table
+        if (verbose) cat("\ncomputing clustered overview table...\n")
+        overview_clustered = group_by(overview_filtered, haplotypR_index)
+        overview_clustered = data.frame(summarize(overview_clustered, total_coverage=sum(coverage), snps=snps[which.max(coverage)]))
+        # convert snps to full haplotype
+        if (verbose) cat("\nconverting SNPs to full haplotypes...\n")
+        ref = as.character(refSeq[[as.character(marker)]])
+        snp_poss = snpLst[[as.character(marker)]]$Pos
+        if (verbose) { 
+            print(snp_poss)
+            print(ref)
+        } 
+        for (r in rownames(overview_clustered)) { 
+            h = ref
+            s = as.character(overview_clustered[r, 'snps'])
+            if (!is.na(s)) { 
+                for (i in seq_along(snp_poss)) { substr(h, snp_poss[i], snp_poss[i]) = substr(s, i, i) }
+            } 
+            overview_clustered[r, 'haplotype'] = h
+        } 
+        # write to file 
         write.table(overview_clustered, file=paste0("haplotypR.", as.character(marker), ".haplotype.index.tsv"), sep='\t', quote=FALSE)
         detach("package:dplyr", unload=TRUE)
-        rm(list=c("overview_filtered", "overview_clustered", "uid_cov", "coverage_mat"))
+        rm(list=c("overview_filtered", "uid_cov", "coverage_mat"))
         
         raw_final_haplotype_table_file = file.path(outputDir, sprintf("rawHaplotypeTable_%s%s.rds", marker, postfix[[marker]]))
         if (!file.exists(raw_final_haplotype_table_file)) { 
@@ -336,7 +359,7 @@ createFinalHaplotypeTable <- function(outputDir, sampleTable, markerTab, snpLst,
         }
         if (verbose) cat(paste0("\nmelting haplotypes table...\n"))
         tab = melt.matrix(tab)
-        colnames(tab) = c("haplotype_index","sample_id","coverage")
+        colnames(tab) = c("haplotypR_index","sample_id","coverage")
         tab = tab[!is.na(tab["coverage"]),]
         tab = tab[tab["coverage"] > 0,]
         
@@ -362,8 +385,15 @@ createFinalHaplotypeTable <- function(outputDir, sampleTable, markerTab, snpLst,
             print(head(tab))
         }
         
+        # add Solexa_ID to final list 
+        tab$Solexa_ID = sapply(tab$sample_id, function(x) substr(x, 0, 13))
+        # join full haplotypes to final list
+        full_tab = merge(tab[,c("Solexa_ID","coverage","haplotypR_index")], 
+                         overview_clustered[,c("haplotypR_index","haplotype")], 
+                         by="haplotypR_index", all.x=TRUE)
+        # write to file
         cat("\nwriting final haplotype table...\n")
-        write.table(tab, file=file.path(outputDir, sprintf("finalHaplotypeList_Hcov%.0f_Scov%.0f_occ%i_sens%.4f_%s%s.txt", 
+        write.table(full_tab, file=file.path(outputDir, sprintf("finalHaplotypeList_Hcov%.0f_Scov%.0f_occ%i_sens%.4f_%s%s.txt", 
                                                            minHaplotypCoverage, minSampleCoverage, minReplicate, detectability, 
                                                            as.character(marker), postfix[[marker]])), 
                     sep="\t", row.names=F, col.names=T)

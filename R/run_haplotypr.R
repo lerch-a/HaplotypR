@@ -14,13 +14,26 @@ suppressWarnings(suppressMessages(library(ShortRead)))
 # parse cmd-line options 
 option_list <- list( 
     make_option(c("-o", "--output_dir"), 
-                help="Directory where to save the output."),
+                help="Directory to save the output."),
     make_option(c("-p", "--amplicons_file"), 
-                help="File with fwd/rev primers and reference seqs listed by amplicon."),
+                help="File with fwd/rev primers, reference seqs, fwd/rev read lengths and max indel threshold listed by amplicon."),
     make_option(c("-s", "--samples_dir"), 
                 help="Directory with demultiplexed sample files."),
-    make_option(c("-v", "--verbose"), action="store_true", default=FALSE, 
-                help="Run verbosely.")
+    make_option(c("-t", "--trim_reads"), action="store_true", default=FALSE,
+                help="If passed will look for fwd/rev read lengths in amplicons_file and trim reads to those lengths."),
+    make_option(c("--min_mismatch"), default=0.05, 
+                help="Minimum rate of mismatch between haplotype and reference sequence."),
+    make_option(c("--min_genotype_occurrence"), default=2, 
+                help="Minimum # of samples for a valid genotype to be called in."),
+    make_option(c("--detection_limit"), default=0.01, 
+                help="Minimum frequency for detecting a haplotype."),
+    make_option(c("--min_haplotype_coverage"), default=3, 
+                help="Minimum coverage for haplotype to be recognized as valid."),
+    make_option(c("--min_haplotype_occurrence"), default=2, 
+                help="Minimum # of samples for a valid haplotype to be called in."),
+    make_option(c("--min_sample_coverage"), default=2, 
+                help="Minimum coverage for a sample to be recognized as valid."),
+    make_option(c("-v", "--verbose"), action="store_true", default=FALSE, help="Run verbosely.")
 )
 opt = parse_args(OptionParser(option_list=option_list))
 
@@ -89,13 +102,31 @@ if (opt$verbose) {
 } 
 
 # trim and merge paired-end reads 
-read_lens_fwd = list(csp=185, sera2=175)
-read_lens_rev = list(csp=103, sera2=84)
-source("/Users/tfarrell/Tools/HaplotypR/R/processReads.R")
 postfix = list()
-for (amplicon in amplicon_df$MarkerID) { 
-    postfix[[amplicon]] <- sprintf("_bind%.0f_%.0f", read_lens_fwd[[amplicon]], read_lens_rev[[amplicon]])
-} 
+source("/Users/tfarrell/Tools/HaplotypR/R/processReads.R")
+if (opt$trim_reads) { 
+    read_lens_fwd = as.integer(amplicon_df$read_lens_fwd)
+    names(read_lens_fwd) = amplicon_df$MarkerID
+    read_lens_rev = as.integer(amplicon_df$read_lens_rev)
+    names(read_lens_rev) = amplicon_df$MarkerID
+    for (amplicon in amplicon_df$MarkerID) { 
+        postfix[[amplicon]] <- sprintf("_bind%.0f_%.0f", read_lens_fwd[[amplicon]], read_lens_rev[[amplicon]])
+    } 
+} else { 
+    read_lens_fwd = list()
+    read_lens_rev = list()
+    for (amplicon in amplicon_df$MarkerID) { 
+        postfix[[amplicon]] = ""
+        #read_lens_fwd[[amplicon]] = c(NULL)
+        #read_lens_rev[[amplicon]] = c(NULL)
+    }
+}
+if (opt$verbose) { 
+    cat("\npostfix and fwd/rev read lens:\n")
+    print(postfix)
+    print(read_lens_fwd)
+    print(read_lens_rev)
+}
 processed_reads_dir = file.path("processed_reads")
 if (!dir.exists(processed_reads_dir)) { 
     cat("\nprocessing reads...\n")
@@ -104,7 +135,8 @@ if (!dir.exists(processed_reads_dir)) {
     processed_reads = bindAmpliconReads(as.character(demultiplexed_amplicons$FileR1), 
                                         as.character(demultiplexed_amplicons$FileR2), 
                                         processed_reads_dir, read1Length=read_lens_fwd, read2Length=read_lens_rev,
-                                        marker=as.character(demultiplexed_amplicons$MarkerID))
+                                        marker=as.character(demultiplexed_amplicons$MarkerID),
+                                        postfix=postfix)
     processed_reads = cbind(demultiplexed_amplicons[,c("SampleID","SampleName","BarcodePair","MarkerID")], 
                             processed_reads)
 } else {
@@ -123,8 +155,8 @@ if (opt$verbose) {
 source("/Users/tfarrell/Tools/HaplotypR/R/callGenotype.R")
 source("/Users/tfarrell/Tools/HaplotypR/R/callHaplotype.R")
 cat("\ncomputing mismatch rates and calling SNPs...\n")
-min_mismatch_rate = 0.5
-min_genotype_occurence = 2
+min_mismatch_rate = opt$min_mismatch 
+min_genotype_occurrence = opt$min_genotype_occurrence 
 ref_seq = DNAStringSet(as.character(amplicon_df$ReferenceSequence))
 names(ref_seq) = amplicon_df$MarkerID
 snps_file = "snps.tsv"
@@ -132,15 +164,23 @@ if (!file.exists(snps_file)) {
     snp_list = list()
     snp_df = data.frame(Chr=character(), Pos=integer(), Ref=character(), Alt=character())
     for (marker in amplicon_df$MarkerID) {
-        # compute mismatch
-        seq_errs = calculateMismatchFrequencies(as.character(processed_reads[processed_reads$MarkerID == marker, "ReadFile"]), 
-                                                ref_seq[marker], method="pairwiseAlignment", minCoverage=100L)
-        names(seq_errs) = processed_reads[processed_reads$MarkerID == marker, "SampleID"][seq(5)]
-        seq_err = do.call(cbind, lapply(seq_errs, function(l) { l[,"MisMatch"]/l[,"Coverage"] }))
+        mismatch_freqs_file = paste0(as.character(marker), ".mismatch_freqs.tsv")
+        if (!file.exists(mismatch_freqs_file)) { 
+            if (opt$verbose) cat("\ncomputing mismatch freqs...\n")
+            # compute mismatch freqs
+            seq_errs = calculateMismatchFrequencies(as.character(processed_reads[processed_reads$MarkerID == marker, "ReadFile"]), 
+                                                    as.character(ref_seq[[marker]]), method="pairwiseAlignment", minCoverage=100L)
+            names(seq_errs) = processed_reads[processed_reads$MarkerID == marker, "SampleID"]
+            seq_err = do.call(cbind, lapply(seq_errs, function(l) { l[,"MisMatch"]/l[,"Coverage"] }))
+            write.table(seq_err, mismatch_freqs_file)
+        } else { 
+            seq_err = read.table(mismatch_freqs_file)    
+        }
         # call SNPs
+        if (opt$verbose) cat("\ncalling SNPs...\n")
         possible_snp = callGenotype(seq_err, minMismatchRate=min_mismatch_rate, 
-                                    minReplicate=min_genotype_occurence)
-        snp_ref = unlist(lapply(possible_snp, function(snp) { as.character(subseq(ref_seq[marker], 
+                                    minReplicate=min_genotype_occurrence)
+        snp_ref = unlist(lapply(possible_snp, function(snp) { as.character(subseq(as.character(ref_seq[[marker]]), 
                                                                                   start=snp, width=1)) }))
         snps = cbind(Chr=marker, Pos=possible_snp, Ref=snp_ref, Alt="N")
         snp_list[[marker]] = snps
@@ -162,20 +202,18 @@ if (opt$verbose) {
     print(snp_list)
 } 
 
-# call haplotypes
-cat("\ncalling haplotypes...\n")
-detection_limit = 0.01
-min_haplotype_coverage = 3
-min_haplotype_occurence = 2
-min_sample_coverage = 25 
 # call final haplotypes
+cat("\ncalling haplotypes...\n")
+max_indel_thresholds = amplicon_df$max_indel_threshold
+names(max_indel_thresholds) = amplicon_df$MarkerID
 haplotypes = createFinalHaplotypeTable(outputDir=opt$output_dir, 
                                        sampleTable=processed_reads, 
                                        snpLst=snp_list, refSeq=ref_seq, 
                                        postfix=postfix, markerTab=amplicon_df, 
-                                       minReplicate=min_haplotype_occurence,
-                                       minHaplotypCoverage=min_haplotype_coverage,
-                                       minSampleCoverage=min_sample_coverage,
-                                       detectability=detection_limit, include_seq=TRUE, 
-                                       verbose=TRUE, just_contingency_table=FALSE)
+                                       minReplicate=opt$min_haplotype_occurrence,
+                                       minHaplotypCoverage=opt$min_haplotype_coverage,
+                                       minSampleCoverage=opt$min_sample_coverage,
+                                       detectability=opt$detection_limit, include_seq=TRUE, 
+                                       verbose=TRUE, just_contingency_table=FALSE, 
+                                       max_indel_thresholds=max_indel_thresholds)
 cat("\ndone.\n\n")
