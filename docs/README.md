@@ -76,7 +76,7 @@ Run HaplotypR GUI:
 runShinyApp()
 ```
 
-# Run HaplotypR on R command line (without shiny app) 
+# Run HaplotypR on command line
 
 ```bash
 Usage: ~/tools/HaplotypR/R/run_haplotypr.R [options]
