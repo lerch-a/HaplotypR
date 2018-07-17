@@ -79,7 +79,7 @@ runShinyApp()
 # Run HaplotypR on command line
 
 ```bash
-Usage: ~/tools/HaplotypR/R/run_haplotypr.R [options]
+Usage: Rscript ~/tools/HaplotypR/R/run_haplotypr.R [options]
 
 Options:
     -o OUTPUT_DIR, --output_dir=OUTPUT_DIR
