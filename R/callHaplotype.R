@@ -173,7 +173,7 @@ callHaplotype <- function(x, detectability=1/100, minHaplotypCoverage=3, minRepl
 createFinalHaplotypeTable <- function(outputDir, sampleTable, markerTab, snpLst, refSeq, postfix, 
                                       minHaplotypCoverage=2, minReplicate=3, detectability=0.01, minSampleCoverage=25, 
                                       include_seq=FALSE, verbose=FALSE, just_contingency_table=TRUE, flag_chimeras=FALSE,
-                                      max_indel_thresholds=list()) {
+                                      max_indel_thresholds=list(), return_full_haplotypes=FALSE) {
     source("/Users/tfarrell/Tools/HaplotypR/R/clusterFunction.R")
     source("/Users/tfarrell/Tools/HaplotypR/R/filterHaplotype.R")
   outFreqFiles <- file.path(outputDir, "haplotype_freq_files")
@@ -261,21 +261,24 @@ createFinalHaplotypeTable <- function(outputDir, sampleTable, markerTab, snpLst,
         if (verbose) cat("\ncomputing clustered overview table...\n")
         overview_clustered = group_by(overview_filtered, haplotypR_index)
         overview_clustered = data.frame(summarize(overview_clustered, total_coverage=sum(coverage), snps=snps[which.max(coverage)]))
-        # convert snps to full haplotype
-        if (verbose) cat("\nconverting SNPs to full haplotypes...\n")
-        ref = as.character(refSeq[[as.character(marker)]])
-        snp_poss = snpLst[[as.character(marker)]]$Pos
-        if (verbose) { 
-            print(snp_poss)
-            print(ref)
-        } 
-        for (r in rownames(overview_clustered)) { 
-            h = ref
-            s = as.character(overview_clustered[r, 'snps'])
-            if (!is.na(s)) { 
-                for (i in seq_along(snp_poss)) { substr(h, snp_poss[i], snp_poss[i]) = substr(s, i, i) }
+        if (return_full_haplotypes) { 
+            # convert snps to full haplotype
+            if (verbose) cat("\nconverting SNPs to full haplotypes...\n")
+            ref = as.character(refSeq[[as.character(marker)]])
+            snp_poss = snpLst[[as.character(marker)]]$Pos
+            if (verbose) { 
+                print(snp_poss)
+                print(ref)
             } 
-            overview_clustered[r, 'haplotype'] = h
+            
+            for (r in rownames(overview_clustered)) { 
+                h = ref
+                s = as.character(overview_clustered[r, 'snps'])
+                if (!is.na(s)) { 
+                    for (i in seq_along(snp_poss)) { substr(h, snp_poss[i], snp_poss[i]) = substr(s, i, i) }
+                } 
+                overview_clustered[r, 'haplotype'] = h
+            } 
         } 
         # write to file 
         write.table(overview_clustered, file=paste0("haplotypR.", as.character(marker), ".haplotype.index.tsv"), sep='\t', quote=FALSE)
@@ -388,9 +391,15 @@ createFinalHaplotypeTable <- function(outputDir, sampleTable, markerTab, snpLst,
         # add Solexa_ID to final list 
         tab$Solexa_ID = sapply(tab$sample_id, function(x) substr(x, 0, 13))
         # join full haplotypes to final list
-        full_tab = merge(tab[,c("Solexa_ID","coverage","haplotypR_index")], 
-                         overview_clustered[,c("haplotypR_index","haplotype")], 
-                         by="haplotypR_index", all.x=TRUE)
+        if ("haplotype" %in% colnames(overview_clustered)) { 
+            full_tab = merge(tab[,c("Solexa_ID","coverage","haplotypR_index")], 
+                             overview_clustered[,c("haplotypR_index","haplotype")], 
+                             by="haplotypR_index", all.x=TRUE)
+        } else { 
+            full_tab = merge(tab[,c("Solexa_ID","coverage","haplotypR_index")], 
+                             overview_clustered[,c("haplotypR_index","snps")], 
+                             by="haplotypR_index", all.x=TRUE)    
+        }
         # write to file
         cat("\nwriting final haplotype table...\n")
         write.table(full_tab, file=file.path(outputDir, sprintf("finalHaplotypeList_Hcov%.0f_Scov%.0f_occ%i_sens%.4f_%s%s.txt", 

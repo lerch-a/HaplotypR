@@ -82,40 +82,44 @@ runShinyApp()
 Usage: Rscript ~/tools/HaplotypR/R/run_haplotypr.R [options]
 
 Options:
-    -o OUTPUT_DIR, --output_dir=OUTPUT_DIR
-        Directory to save the output.
+        -o OUTPUT_DIR, --output_dir=OUTPUT_DIR
+                Directory to save the output.
 
-    -p AMPLICONS_FILE, --amplicons_file=AMPLICONS_FILE
-        File with fwd/rev primers, reference seqs, fwd/rev read lengths and max indel threshold listed by amplicon.
+        -p AMPLICONS_FILE, --amplicons_file=AMPLICONS_FILE
+                File with fwd/rev primers, reference seqs, fwd/rev read lengths and max indel threshold listed by amplicon.
 
-    -s SAMPLES_DIR, --samples_dir=SAMPLES_DIR
-        Directory with demultiplexed sample files.
+        -s SAMPLES_DIR, --samples_dir=SAMPLES_DIR
+                Directory with demultiplexed sample files split into R1/2
+                (i.e. sample_demultiplexed/sample_*_R[12].fastq.gz).
 
-    -t, --trim_reads
-        If passed will look for fwd/rev read lengths in amplicons_file and trim reads to those lengths.
+        -t, --trim_reads
+                If passed will look for fwd/rev read lengths in amplicons_file and trim reads to those lengths.
 
-    --min_mismatch=MIN_MISMATCH
-        Minimum rate of mismatch between haplotype and reference sequence.
+        --min_mismatch=MIN_MISMATCH
+                Minimum rate of mismatch between haplotype and reference sequence (default=0.05).
 
-    --min_genotype_occurrence=MIN_GENOTYPE_OCCURRENCE
-        Minimum # of samples for a valid genotype to be called in.
+        --min_genotype_occurrence=MIN_GENOTYPE_OCCURRENCE
+                Minimum # of samples for a valid genotype to be called in (default=2).
 
-    --detection_limit=DETECTION_LIMIT
-        Minimum frequency for detecting a haplotype.
+        --detection_limit=DETECTION_LIMIT
+                Minimum frequency for detecting a haplotype (default=0.01).
 
-    --min_haplotype_coverage=MIN_HAPLOTYPE_COVERAGE
-        Minimum coverage for haplotype to be recognized as valid.
+        --min_haplotype_coverage=MIN_HAPLOTYPE_COVERAGE
+                Minimum coverage for haplotype to be recognized as valid (default=3).
 
-    --min_haplotype_occurrence=MIN_HAPLOTYPE_OCCURRENCE
-        Minimum # of samples for a valid haplotype to be called in.
+        --min_haplotype_occurrence=MIN_HAPLOTYPE_OCCURRENCE
+                Minimum # of samples for a valid haplotype to be called in (default=2).
 
-    --min_sample_coverage=MIN_SAMPLE_COVERAGE
-        Minimum coverage for a sample to be recognized as valid.
+        --min_sample_coverage=MIN_SAMPLE_COVERAGE
+                Minimum coverage for a sample to be recognized as valid (default=2).
 
-    -v, --verbose
-        Run verbosely.
+        --return_full_haplotypes
+                Pass this flag to return full haplotype sequences in the output
+                (as opposed to just sequence of alleles that occur at identified snp positions).
 
-    -h, --help
-        Show this help message and exit
+        -v, --verbose
+                Run verbosely.
 
+        -h, --help
+                Show this help message and exit
 ```
