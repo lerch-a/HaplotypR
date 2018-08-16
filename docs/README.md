@@ -116,6 +116,9 @@ Options:
         --return_full_haplotypes
                 Pass this flag to return full haplotype sequences in the output
                 (as opposed to just sequence of alleles that occur at identified snp positions).
+	
+	--test_on=TEST_ON
+		Test pipeline on the first $test_on samples in the sample-demultiplexed directory.
 
         -v, --verbose
                 Run verbosely.
