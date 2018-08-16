@@ -174,8 +174,8 @@ createFinalHaplotypeTable <- function(outputDir, sampleTable, markerTab, snpLst,
                                       minHaplotypCoverage=2, minReplicate=3, detectability=0.01, minSampleCoverage=25, 
                                       include_seq=FALSE, verbose=FALSE, just_contingency_table=TRUE, flag_chimeras=FALSE,
                                       max_indel_thresholds=list(), return_full_haplotypes=FALSE) {
-    source("/Users/tfarrell/Tools/HaplotypR/R/clusterFunction.R")
-    source("/Users/tfarrell/Tools/HaplotypR/R/filterHaplotype.R")
+    #source("/Users/tfarrell/Tools/HaplotypR/R/clusterFunction.R")
+    #source("/Users/tfarrell/Tools/HaplotypR/R/filterHaplotype.R")
   outFreqFiles <- file.path(outputDir, "haplotype_freq_files")
   dir.create(outFreqFiles)
   res <- lapply(rev(markerTab$MarkerID), function(marker) {

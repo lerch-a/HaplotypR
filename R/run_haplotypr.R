@@ -113,7 +113,7 @@ if (opt$verbose) {
 
 # trim and merge paired-end reads 
 postfix = list()
-source("/Users/tfarrell/Tools/HaplotypR/R/processReads.R")
+#source("/Users/tfarrell/Tools/HaplotypR/R/processReads.R")
 if (opt$trim_reads) { 
     read_lens_fwd = as.integer(amplicon_df$read_lens_fwd)
     names(read_lens_fwd) = amplicon_df$MarkerID
@@ -162,8 +162,8 @@ if (opt$verbose) {
 } 
 
 # compute mismatch rate and call SNPs
-source("/Users/tfarrell/Tools/HaplotypR/R/callGenotype.R")
-source("/Users/tfarrell/Tools/HaplotypR/R/callHaplotype.R")
+#source("/Users/tfarrell/Tools/HaplotypR/R/callGenotype.R")
+#source("/Users/tfarrell/Tools/HaplotypR/R/callHaplotype.R")
 cat("\ncomputing mismatch rates and calling SNPs...\n")
 min_mismatch_rate = opt$min_mismatch 
 min_genotype_occurrence = opt$min_genotype_occurrence 

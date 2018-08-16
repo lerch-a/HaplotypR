@@ -43,7 +43,7 @@ repo <- clone("https://github.com/lerch-a/Rvsearch.git", path)
 clone("https://github.com/torognes/vsearch.git", file.path(path, "src", "vsearch"))
 install(path)
 
-devtools::install_github("lerch-a/HaplotypR")
+devtools::install_github("tmfarrell/HaplotypR")
 ```
 
 # Run HaplotypR via command line
