@@ -46,37 +46,7 @@ install(path)
 devtools::install_github("lerch-a/HaplotypR")
 ```
 
-# Run HaplotypR as Shiny App
-
-Load HaplotypR package:
-```R
-library("HaplotypR")
-```
-
-Copy Example Files to a working directory 'outputDir':
-```R
-# Define output directory 
-outputDir <- "~/exampleHaplotypR"  
-# Create output directoy
-if(!dir.exists(outputDir))
-  dir.create(outputDir, recursive=T)
-# Set working directory to output directory
-setwd(outputDir)
-
-# Copy example files to output directory
-file.copy(from=system.file(package="HaplotypR", "extdata"), to=outputDir, recursive = T)
-# List files example files in output directory
-dir(file.path(outputDir, "extdata"))
-```
-The listed file can be used as example input files in the shiny app. The following files should be listed with the last R command: "barcode_Fwd.fasta", "barcode_Rev.fasta", "markerFile.txt", "readsF.fastq.gz", "readsR.fastq.gz", "sampleFile.txt". 
-
-
-Run HaplotypR GUI:
-```R
-runShinyApp()
-```
-
-# Run HaplotypR on command line
+# Run HaplotypR via command line
 
 ```bash
 Usage: Rscript ~/tools/HaplotypR/R/run_haplotypr.R [options]
@@ -125,4 +95,35 @@ Options:
 
         -h, --help
                 Show this help message and exit
+```
+
+
+# Run HaplotypR as Shiny App
+
+Load HaplotypR package:
+```R
+library("HaplotypR")
+```
+
+Copy Example Files to a working directory 'outputDir':
+```R
+# Define output directory 
+outputDir <- "~/exampleHaplotypR"  
+# Create output directoy
+if(!dir.exists(outputDir))
+  dir.create(outputDir, recursive=T)
+# Set working directory to output directory
+setwd(outputDir)
+
+# Copy example files to output directory
+file.copy(from=system.file(package="HaplotypR", "extdata"), to=outputDir, recursive = T)
+# List files example files in output directory
+dir(file.path(outputDir, "extdata"))
+```
+The listed file can be used as example input files in the shiny app. The following files should be listed with the last R command: "barcode_Fwd.fasta", "barcode_Rev.fasta", "markerFile.txt", "readsF.fastq.gz", "readsR.fastq.gz", "sampleFile.txt". 
+
+
+Run HaplotypR GUI:
+```R
+runShinyApp()
 ```
