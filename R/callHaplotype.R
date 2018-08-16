@@ -111,10 +111,10 @@ callHaplotype <- function(x, detectability=1/100, minHaplotypCoverage=3, minRepl
       print(paste(sum(pass_samplecov_filter_idx, na.rm=TRUE), "samples passed coverage filter."))
   } 
   if (all(!pass_samplecov_filter_idx)) {
-      if (verbose) cat("\nNo samples passed sample coverage filter.")
+    if (verbose) cat("\nNo samples passed sample coverage filter.")
   	x[,!idx] <- NA
-  	x <- x[1,, drop=F]
-  	rownames(x) <- NA
+  	#x <- x[1,, drop=F]
+  	#rownames(x) <- NA
   	return(x)
   } else {
   	x[, !idx] <- NA 
@@ -178,7 +178,7 @@ createFinalHaplotypeTable <- function(outputDir, sampleTable, markerTab, snpLst,
     source("/Users/tfarrell/Tools/HaplotypR/R/filterHaplotype.R")
   outFreqFiles <- file.path(outputDir, "haplotype_freq_files")
   dir.create(outFreqFiles)
-  res <- lapply(markerTab$MarkerID, function(marker) {
+  res <- lapply(rev(markerTab$MarkerID), function(marker) {
       if (verbose) cat(paste0("\nfor ", as.character(marker), ":\n"))
       max_indel_threshold = max_indel_thresholds[[as.character(marker)]]
     samTab <- sampleTable[sampleTable$MarkerID == marker,]
@@ -237,9 +237,11 @@ createFinalHaplotypeTable <- function(outputDir, sampleTable, markerTab, snpLst,
             # cluster identical SNP patterns
             idx <- overviewHap$FinalHaplotype == as.character(marker)
             snps <- unique(overviewHap$snps[idx])
-            names(snps) <- paste(marker, seq_along(snps), sep="-")
-            levels(overviewHap$FinalHaplotype) <- c(levels(overviewHap$FinalHaplotype), names(snps))
-            overviewHap$FinalHaplotype[idx] <- names(snps)[match(overviewHap$snps[idx], snps)]
+            if (length(snps) != 0) {
+                names(snps) <- paste(marker, seq_along(snps), sep="-")
+                levels(overviewHap$FinalHaplotype) <- c(levels(overviewHap$FinalHaplotype), names(snps))
+                overviewHap$FinalHaplotype[idx] <- names(snps)[match(overviewHap$snps[idx], snps)]
+            } 
             overviewHap <- as.data.frame(overviewHap)
             if (verbose) cat("\nwriting haplotype overview table...\n")
             write.table(overviewHap, file=overview_haplotype_table_file, sep="\t")
@@ -281,7 +283,8 @@ createFinalHaplotypeTable <- function(outputDir, sampleTable, markerTab, snpLst,
             } 
         } 
         # write to file 
-        write.table(overview_clustered, file=paste0("haplotypR.", as.character(marker), ".haplotype.index.tsv"), sep='\t', quote=FALSE)
+        write.table(overview_clustered, file=paste0("haplotypR.", as.character(marker), ".haplotype.index.tsv"), 
+                    sep='\t', quote=FALSE)
         detach("package:dplyr", unload=TRUE)
         rm(list=c("overview_filtered", "uid_cov", "coverage_mat"))
         
@@ -357,8 +360,17 @@ createFinalHaplotypeTable <- function(outputDir, sampleTable, markerTab, snpLst,
                              minReplicate=length(idx), detectability=detectability, minSampleCoverage=minSampleCoverage, 
                              reportBackground=FALSE, verbose=TRUE)
         if (verbose) { 
-            cat("recalled haplotypes...")
+            cat("recalled haplotypes...\n")
             print(head(tab))
+        }
+        # if no coverage for any samples, output empty finalHaplotypeList
+        if (all(colSums(tab) == 0)) { 
+            result = setNames(data.frame(matrix(ncol = 3, nrow = 0)), c("Solexa_ID", "haplotype_index", "coverage"))
+            write.table(result, file=file.path(outputDir, sprintf("finalHaplotypeList_Hcov%.0f_Scov%.0f_occ%i_sens%.4f_%s%s.txt", 
+                                                                  minHaplotypCoverage, minSampleCoverage, minReplicate, detectability, 
+                                                                  as.character(marker), postfix[[marker]])), 
+                        sep="\t", row.names=F, col.names=T, quote=FALSE)
+            return(result)
         }
         if (verbose) cat(paste0("\nmelting haplotypes table...\n"))
         tab = melt.matrix(tab)
@@ -405,7 +417,7 @@ createFinalHaplotypeTable <- function(outputDir, sampleTable, markerTab, snpLst,
         write.table(full_tab, file=file.path(outputDir, sprintf("finalHaplotypeList_Hcov%.0f_Scov%.0f_occ%i_sens%.4f_%s%s.txt", 
                                                            minHaplotypCoverage, minSampleCoverage, minReplicate, detectability, 
                                                            as.character(marker), postfix[[marker]])), 
-                    sep="\t", row.names=F, col.names=T)
+                    sep="\t", row.names=F, col.names=T, quote=FALSE)
         rownames(tab) <- NULL
         return(tab)
         } else { 

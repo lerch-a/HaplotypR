@@ -36,6 +36,8 @@ option_list <- list(
     make_option(c("--return_full_haplotypes"), action="store_true", default=FALSE, 
                 help=paste0("Pass this flag to return full haplotype sequences in the output\n",
                             "\t\t(as opposed to just sequence of alleles that occur at identified snp positions).")),
+    make_option(c("--test_on"), default=0, 
+                help="Test pipeline on the first $test_on samples in the sample-demultiplexed directory."),
     make_option(c("-v", "--verbose"), action="store_true", default=FALSE, help="Run verbosely.")
 )
 opt = parse_args(OptionParser(option_list=option_list))
@@ -49,8 +51,11 @@ demultiplexed_samples$SampleID = lapply(demultiplexed_samples$FileR1, function(x
 demultiplexed_samples$SampleName = lapply(demultiplexed_samples$FileR1, function(x) substr(basename(as.character(x)), 0, 13))
 demultiplexed_samples$BarcodePair = lapply(seq(1, length(demultiplexed_samples$FileR1) * 2, 2), 
                                            function(x) { paste0("fwd_", x, "_rev_", x + 1) })
+if (opt$test_on > 0) { 
+    demultiplexed_samples = demultiplexed_samples[seq(opt$test_on),]    
+}
 if (opt$verbose)  {
-    cat("\ndemultiplexed_samples:\n")
+    cat(paste0("\ndemultiplexed_samples: ", as.character(nrow(demultiplexed_samples)), '\n'))
     print(head(demultiplexed_samples))
 } 
 
@@ -58,10 +63,11 @@ if (opt$verbose)  {
 amplicon_df = read.delim(amplicons_file)
 demultiplexed_amplicons_dir = "demultiplexed_amplicons/"
 if (!dir.exists(demultiplexed_amplicons_dir)) { 
-    cat("\ndemultiplexing amplicons...")
+    cat("\ndemultiplexing amplicons...\n")
     dir.create(demultiplexed_amplicons_dir)
-    demultiplexed_amplicons = lapply(2:dim(amplicon_df)[1], function(i) {
+    demultiplexed_amplicons = lapply(1:dim(amplicon_df)[1], function(i) {
         mid = as.character(amplicon_df[i, "MarkerID"])
+        cat(paste0(mid, '...\n'))
         adapter_fwd = as.character(amplicon_df[i, "Forward"])
         adapter_rev = as.character(amplicon_df[i, "Reverse"])
         r = lapply(seq_along(demultiplexed_samples$FileR1), function(j) { 
@@ -77,6 +83,7 @@ if (!dir.exists(demultiplexed_amplicons_dir)) {
               MarkerID=mid, do.call(rbind, r))
     })
     demultiplexed_amplicons = do.call(rbind, demultiplexed_amplicons)
+    demultiplexed_samples$BarcodePair = as.character(demultiplexed_samples$BarcodePair)
     demultiplexed_amplicons = merge.data.frame(demultiplexed_samples[,c("SampleID","SampleName","BarcodePair")],
                                                demultiplexed_amplicons, by="BarcodePair")
 } else { 
@@ -185,7 +192,7 @@ if (!file.exists(snps_file)) {
                                     minReplicate=min_genotype_occurrence)
         snp_ref = unlist(lapply(possible_snp, function(snp) { as.character(subseq(as.character(ref_seq[[marker]]), 
                                                                                   start=snp, width=1)) }))
-        snps = cbind(Chr=marker, Pos=possible_snp, Ref=snp_ref, Alt="N")
+        snps = as.data.frame(cbind(Chr=marker, Pos=possible_snp, Ref=snp_ref, Alt="N"))
         snp_list[[marker]] = snps
         if (length(possible_snp) > 0) {
             snp_df = rbind(snp_df, snps)
