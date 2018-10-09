@@ -91,8 +91,16 @@ createContingencyTable <- function(inputFiles, dereplicated=F, inputFormat="fast
 # call haplotype, if passes all filters 
 callHaplotype <- function(x, detectability=1/100, minHaplotypCoverage=3, minReplicate=2, 
                           minSampleCoverage=300, reportBackground=FALSE, defineBackground=NULL, verbose=FALSE, ...) {
+  #
+  # inputs: 
+  #     x : matrix, where columns are samples, rows are haplotypes and values are counts
+  #     detectability : unused param, but supposed to filter haplotypes below this min frequency
+  #     minHaplotypeCoverage : filter haplotypes below this min haplotype coverage
+  #     minReplicate : unused parameter
+  #     minSampleCoverage : filter samples below this min sample coverage
+  #
   # check minHaplotypCoverage argument
-  if(minHaplotypCoverage < 3){
+  if(minHaplotypCoverage < 3) {
     arguments <- list(...)
     if(any(is.null(arguments$overwriteMinCoverage), arguments$overwriteMinCoverage==F)){
       stop("The minimum read coverage per Haplotype (= minHaplotypCoverage) must be at least 3. 
@@ -127,10 +135,10 @@ callHaplotype <- function(x, detectability=1/100, minHaplotypCoverage=3, minRepl
   # sample replicated
   minReplicate <- min(dim(x)[2], minReplicate)
   
-  # remove haplotypes without reads
-  x <- x[(rowSums(x > 0, na.rm=TRUE) > 0),, drop=F]
+  # remove haplotypes less than minimum haplotype coverage
+  x <- x[(rowSums(x > 0, na.rm=TRUE) > minHaplotypCoverage),, drop=F]
   if (verbose) {
-      cat("\nafter removing haplotypes w/o reads...\n")
+      cat("\nafter removing haplotypes below minimum threshold...\n")
       print(head(x))  
   } 
   
@@ -143,8 +151,10 @@ callHaplotype <- function(x, detectability=1/100, minHaplotypCoverage=3, minRepl
       print(head(x))  
   } 
   
-  # check for noise haplotype
+  # filter haplotypes with frequency (in the population) < detectability
   if (FALSE) { 
+      # old code 
+      # check for noise haplotype
       minCov <- colSums(x) * detectability
       minCov[minCov < minHaplotypCoverage] <- minHaplotypCoverage
       if (dim(x)[1] > 0) {
@@ -158,8 +168,10 @@ callHaplotype <- function(x, detectability=1/100, minHaplotypCoverage=3, minRepl
           cat("\nafter checking for noise haplotypes...\n")
           print(head(x))  
       } 
+  } else { 
+      #x = x[(rowSums(x) / sum(x)) > detectability,]
   }
-  # add background to haplotyp counts
+  # add background to haplotype counts
   if (reportBackground) {
     if (dim(x)[1] > 0)
         x <- rbind(Noise=lowCnt, background, x[order(rowSums(x)),, drop=F])
@@ -256,7 +268,8 @@ createFinalHaplotypeTable <- function(outputDir, sampleTable, markerTab, snpLst,
         suppressWarnings(suppressMessages(library(dplyr)))
         # compute filtered overview table, joined w/ uid coverage
         if (verbose) cat("\ncomputing filtered overview table...\n")
-        overview_filtered = overviewHap[sapply(overviewHap["FinalHaplotype"], function (x) grepl(as.character(marker), x)), c("HaplotypesName","FinalHaplotype","snps")]
+        overview_filtered = overviewHap[sapply(overviewHap["FinalHaplotype"], 
+                                               function (x) grepl(as.character(marker), x)), c("HaplotypesName","FinalHaplotype","snps")]
         colnames(overview_filtered) = c("uid","haplotypR_index","snps") 
         overview_filtered = merge(overview_filtered, uid_cov, by="uid")[,c("uid","haplotypR_index","coverage","snps")]
         # compute clustered overview table
@@ -272,7 +285,6 @@ createFinalHaplotypeTable <- function(outputDir, sampleTable, markerTab, snpLst,
                 print(snp_poss)
                 print(ref)
             } 
-            
             for (r in rownames(overview_clustered)) { 
                 h = ref
                 s = as.character(overview_clustered[r, 'snps'])

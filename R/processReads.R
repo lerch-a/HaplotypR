@@ -173,8 +173,9 @@ bindAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, markerID, rea
     # check and set progress report function
     if(!is.function(progressReport))
       progressReport <- message
-    msg <- paste0("Processing file ", basename(fastqFileR1[i]), " and ", basename(fastqFileR2[i]), percent(i, num_pairs), "% ")
-    progressReport(detail=msg, value=i)
+    msg <- paste("Processing file", basename(fastqFileR1[i]), "and", basename(fastqFileR2[i]), 
+                 paste0(as.character(percent(i, num_pairs)),"%"))
+    progressReport(detail=msg) #, value=i)
     
     marker = markerID[i] 
     outputFile <- file.path(outputDir, sub("\\.fastq.gz", "", basename(fastqFileR1[i])))
