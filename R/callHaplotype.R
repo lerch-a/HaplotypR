@@ -114,19 +114,19 @@ callHaplotype <- function(x, detectability=1/100, minHaplotypCoverage=3, minRepl
   minReplicate <- min(dim(x)[2], minReplicate)
   
   # remove haplotypes without reads
-  x <- x[rowSums(x>0) > 0,,drop=F]
+  x <- x[rowSums(x>0, na.rm=T) > 0,,drop=F]
   
   # selected and remove filtered haplotype
   idx <- rownames(x) %in% defineBackground
   background <- x[idx,, drop=F]
   x <- x[!idx,, drop=F]
-  
+
   # check for noise haplotype
-  minCov <- colSums(x)*detectability
+  minCov <- colSums(x, na.rm=T)*detectability
   minCov[minCov<minHaplotypCoverage] <- minHaplotypCoverage
   if(dim(x)[1]>0){
-  	noiseIdx <- rowSums(t(t(x)/minCov) >= 1) < minReplicate # only haplotypes present in minimum replicates
-  	lowCnt <- colSums(x[noiseIdx,,drop=F])
+  	noiseIdx <- rowSums(t(t(x)/minCov) >= 1, na.rm=T) < minReplicate # only haplotypes present in minimum replicates
+  	lowCnt <- colSums(x[noiseIdx,,drop=F], na.rm=T)
   	x <- x[!noiseIdx,,drop=F]
   }else{
   	lowCnt <- 0
@@ -160,7 +160,8 @@ createFinalHaplotypTable <- function(outputDir=outputDir, sampleTable=procReads,
     tab <- createContingencyTable(as.character(samTab$ReadFile), dereplicated=F, inputFormat="fastq", outputDir=outFreqFiles,
                                   sampleNames=as.character(samTab$SampleID), replicatNames=NULL, 
                                   haplotypeUIDFile=NULL)
-    #write.table(tab, file=file.path(outputDir, sprintf("contingencyTable_%s%s.txt", marker, postfix)), sep="\t")
+    if( getOption("HaplotypR.devel"))
+      write.table(tab, file=file.path(outputDir, sprintf("contingencyTable_%s%s.txt", marker, postfix)), sep="\t")
     fnAllSeq <- file.path(outFreqFiles, sprintf("allSequences_%s%s.fasta", marker, postfix))
     file.rename(file.path(outFreqFiles, "allHaplotypes.fa"), fnAllSeq)
     frqfile <- file.path(outFreqFiles, paste(prefix, "_hapFreq.fa", sep=""))
@@ -194,7 +195,8 @@ createFinalHaplotypTable <- function(outputDir=outputDir, sampleTable=procReads,
     levels(overviewHap$FinalHaplotype) <- c(levels(overviewHap$FinalHaplotype), names(snps))
     overviewHap$FinalHaplotype[idx] <- names(snps)[match(overviewHap$snps[idx], snps)]
     overviewHap <- as.data.frame(overviewHap)
-    #write.table(overviewHap, file=file.path(outputDir, sprintf("HaplotypeOverviewTable_%s%s.txt", marker, postfix)), sep="\t")
+    if( getOption("HaplotypR.devel"))
+      write.table(overviewHap, file=file.path(outputDir, sprintf("HaplotypeOverviewTable_%s%s.txt", marker, postfix)), sep="\t")
     
     # runCallHaplotype  <- function(input, output, session, volumes){
     
@@ -221,55 +223,69 @@ createFinalHaplotypTable <- function(outputDir=outputDir, sampleTable=procReads,
     
     # set final haplotype names
     rownames(haplotypesSample) <- overviewHap[rownames(haplotypesSample), "FinalHaplotype"]
-    #write.table(cbind(HaplotypNames=rownames(haplotypesSample),haplotypesSample), 
-    #              file=file.path(outputDir, sprintf("rawHaplotypeTable_%s%s.txt", marker, postfix)), sep="\t", row.names=F, col.names=T)
+    if( getOption("HaplotypR.devel"))
+      write.table(cbind(HaplotypNames=rownames(haplotypesSample),haplotypesSample), 
+                  file=file.path(outputDir, sprintf("rawHaplotypeTable_%s%s.txt", marker, postfix)), sep="\t", row.names=F, col.names=T)
+  
     haplotypesSample <- reclusterHaplotypesTable(haplotypesSample)
-    #write.table(cbind(HaplotypNames=rownames(haplotypesSample),haplotypesSample), 
-    #              file=file.path(outputDir, sprintf("reclusteredHaplotypeTable_%s%s.txt", marker, postfix)), sep="\t", row.names=F, col.names=T)
+    if( getOption("HaplotypR.devel"))
+      write.table(cbind(HaplotypNames=rownames(haplotypesSample),haplotypesSample), 
+                  file=file.path(outputDir, sprintf("reclusteredHaplotypeTable_%s%s.txt", marker, postfix)), sep="\t", row.names=F, col.names=T)
     
     
     # Apply cut-off haplotype only in 1 sample
-    haplotypesSample <- callHaplotype(haplotypesSample, minHaplotypCoverage=minCov, minReplicate=minOccHap, 
+    haplotypesSample <- callHaplotype(haplotypesSample, minHaplotypCoverage=minCov, minReplicate=minReplicate, 
                                       detectability=detectionLimit, minSampleCoverage=1)
     
-    # write.table(cbind(HaplotypNames=rownames(haplotypesSample), haplotypesSample), 
-    #             file=file.path(outputDir, sprintf("finalHaplotypeTable_Hcov%.0f_Scov%.0f_occ%i_sens%.4f_%s%s.txt", 
-    #                                         minCov, minCovSample, minOccHap, detectionLimit, marker, postfix)), 
-    #             sep="\t", row.names=F, col.names=T)
+    if( getOption("HaplotypR.devel")) 
+      write.table(cbind(HaplotypNames=rownames(haplotypesSample), haplotypesSample), 
+                file=file.path(outputDir, sprintf("finalHaplotypeTable_Hcov%.0f_Scov%.0f_occ%i_sens%.4f_%s%s.txt",
+                                            minCov, minCovSample, minReplicate, detectionLimit, marker, postfix)),
+                sep="\t", row.names=F, col.names=T)
+    
     
     # check replicates
     idx <- split(1:dim(haplotypesSample)[2], samTab$SampleName)
     lst <- lapply(idx, function(i){
       tab <- callHaplotype(haplotypesSample[,i, drop=F], minHaplotypCoverage=minCov, 
-                           minReplicate=length(i), detectability=detectionLimit, minSampleCoverage=minCovSample, 
+                           minReplicate=minReplicate, detectability=detectionLimit, minSampleCoverage=minCovSample, 
                            reportBackground=T)
       tab <- cbind(samTab[rep(i,each=dim(tab)[1]), c("SampleID","SampleName","MarkerID")], 
                    Haplotype=rownames(tab), Reads=as.integer(tab))
       colnames(tab) <- c("SampleID","SampleName","MarkerID","Haplotype","Reads")
       rownames(tab) <- NULL
       #check individual samples for chimera
-      if(length(i)){
-        tmpTab <- as.data.frame(tapply(tab$Reads, tab$Haplotype, sum))
-        tmpTab$Haplotype <- rownames(tmpTab)
-        colnames(tmpTab) <- c("Reads","Haplotype")
-        hIdx <- grep(marker, tmpTab$Haplotype)
-      }else{
-        hIdx <- grep(marker, tab$Haplotype)
-      }
-      chim <- NULL
-      if(length(hIdx)>2){
-        chim <- flagChimera(tmpTab[hIdx,], overviewHap)
-      }
-      rm(tmpTab)
-      tab$FlagChimera <- tab$Haplotype %in% chim
-      return(tab)
+      do.call(rbind, lapply(split(tab, tab$SampleID), function(tt){
+        chim <- NULL
+        hIdx <- grep(marker, tt$Haplotype)
+        if(length(hIdx)>2){
+          chim <- flagChimera(tt[hIdx,], overviewHap)
+        }
+        tt$FlagChimera <- tt$Haplotype %in% chim
+        return(tt)
+      }))
+    #   if(length(i)>1){
+    #     tmpTab <- as.data.frame(tapply(tab$Reads, tab$Haplotype, sum))
+    #     tmpTab$Haplotype <- rownames(tmpTab)
+    #     colnames(tmpTab) <- c("Reads","Haplotype")
+    #     hIdx <- grep(marker, tmpTab$Haplotype)
+    #   }else{
+    #     hIdx <- grep(marker, tab$Haplotype)
+    #   }
+    #   chim <- NULL
+    #   if(length(hIdx)>2){
+    #     browser()
+    #     chim <- flagChimera(tmpTab[hIdx,], overviewHap)
+    #   }
+    #   rm(tmpTab)
+    #   tab$FlagChimera <- tab$Haplotype %in% chim
+    #   return(tab)
     })
     lst <- do.call(rbind, lst)
     
-    
     write.table(lst, 
                 file=file.path(outputDir, sprintf("finalHaplotypeList_Hcov%.0f_Scov%.0f_occ%i_sens%.4f_%s%s.txt", 
-                                                  minCov, minCovSample, minOccHap, detectionLimit, marker, postfix)), 
+                                                  minCov, minCovSample, minReplicate, detectionLimit, marker, postfix)), 
                 sep="\t", row.names=F, col.names=T)
     rownames(lst) <- NULL
     return(lst)
