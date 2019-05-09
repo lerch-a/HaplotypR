@@ -1,7 +1,7 @@
 Package: HaplotypR
 Type: Package
 Title: HaplotypR, a pipeline to analyse amplicon deep sequencing genotyping data
-Version: 0.1
+Version: 0.3
 Date: 2016-12-20
 Author: Anita Lerch
 Maintainer: Anita Lerch <anita.lerch@unibas.ch>
