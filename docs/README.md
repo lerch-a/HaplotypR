@@ -15,8 +15,9 @@ HaplotypR is distributed under the GNU General Public License, version 3.
 To install HaplotypR start R and first install ShortRead by typing:
 
 ```R
-source("http://bioconductor.org/biocLite.R")
-biocLite("ShortRead")
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install("ShortRead")
 ```
 
 Then install devtools by typing
