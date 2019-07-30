@@ -147,6 +147,9 @@ createFinalHaplotypTable <- function(outputDir=outputDir, sampleTable=procReads,
                                      snpList=snpLst, postfix=postfix, 
                                      minHaplotypCoverage=minCov, minReplicate=minOccHap, 
                                      detectability=detectionLimit, minSampleCoverage=minCovSample){
+  devMode <- getOption("HaplotypR.devel")
+  if(is.null(devMode))
+    devMode <- F
   
   outFreqFiles <- file.path(outputDir, "frequencyFiles")
   dir.create(outFreqFiles)
@@ -160,7 +163,7 @@ createFinalHaplotypTable <- function(outputDir=outputDir, sampleTable=procReads,
     tab <- createContingencyTable(as.character(samTab$ReadFile), dereplicated=F, inputFormat="fastq", outputDir=outFreqFiles,
                                   sampleNames=as.character(samTab$SampleID), replicatNames=NULL, 
                                   haplotypeUIDFile=NULL)
-    if( getOption("HaplotypR.devel"))
+    if(devMode)
       write.table(tab, file=file.path(outputDir, sprintf("contingencyTable_%s%s.txt", marker, postfix)), sep="\t")
     fnAllSeq <- file.path(outFreqFiles, sprintf("allSequences_%s%s.fasta", marker, postfix))
     file.rename(file.path(outFreqFiles, "allHaplotypes.fa"), fnAllSeq)
@@ -195,7 +198,7 @@ createFinalHaplotypTable <- function(outputDir=outputDir, sampleTable=procReads,
     levels(overviewHap$FinalHaplotype) <- c(levels(overviewHap$FinalHaplotype), names(snps))
     overviewHap$FinalHaplotype[idx] <- names(snps)[match(overviewHap$snps[idx], snps)]
     overviewHap <- as.data.frame(overviewHap)
-    if( getOption("HaplotypR.devel"))
+    if(devMode)
       write.table(overviewHap, file=file.path(outputDir, sprintf("HaplotypeOverviewTable_%s%s.txt", marker, postfix)), sep="\t")
     
     # runCallHaplotype  <- function(input, output, session, volumes){
@@ -223,12 +226,12 @@ createFinalHaplotypTable <- function(outputDir=outputDir, sampleTable=procReads,
     
     # set final haplotype names
     rownames(haplotypesSample) <- overviewHap[rownames(haplotypesSample), "FinalHaplotype"]
-    if( getOption("HaplotypR.devel"))
+    if(devMode)
       write.table(cbind(HaplotypNames=rownames(haplotypesSample),haplotypesSample), 
                   file=file.path(outputDir, sprintf("rawHaplotypeTable_%s%s.txt", marker, postfix)), sep="\t", row.names=F, col.names=T)
   
     haplotypesSample <- reclusterHaplotypesTable(haplotypesSample)
-    if( getOption("HaplotypR.devel"))
+    if(devMode)
       write.table(cbind(HaplotypNames=rownames(haplotypesSample),haplotypesSample), 
                   file=file.path(outputDir, sprintf("reclusteredHaplotypeTable_%s%s.txt", marker, postfix)), sep="\t", row.names=F, col.names=T)
     
@@ -237,7 +240,7 @@ createFinalHaplotypTable <- function(outputDir=outputDir, sampleTable=procReads,
     haplotypesSample <- callHaplotype(haplotypesSample, minHaplotypCoverage=minCov, minReplicate=minReplicate, 
                                       detectability=detectionLimit, minSampleCoverage=1)
     
-    if( getOption("HaplotypR.devel")) 
+    if(devMode) 
       write.table(cbind(HaplotypNames=rownames(haplotypesSample), haplotypesSample), 
                 file=file.path(outputDir, sprintf("finalHaplotypeTable_Hcov%.0f_Scov%.0f_occ%i_sens%.4f_%s%s.txt",
                                             minCov, minCovSample, minReplicate, detectionLimit, marker, postfix)),

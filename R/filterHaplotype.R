@@ -147,7 +147,7 @@ createHaplotypOverviewTable <- function(allHaplotypesFilenames, clusterFilenames
 		idx <- as.character(id(sr1)) %in% as.character(overviewHap$HaplotypesName[!overviewHap$singelton])
 		sr1 <- sr1[idx]
 		aln1 <- pairwiseAlignment(sread(sr1), referenceSequence, type="global")
-		idx <- (S4Vectors::lengths(deletion(aln1)) + S4Vectors::lengths(insertion(aln1))) == 0
+		idx <- (lengths(deletion(aln1)) + lengths(insertion(aln1))) == 0
 		names(idx) <- as.character(id(sr1))
 		overviewHap[names(idx),"indels"] <- !idx
 		sr1 <- sr1[idx]
