@@ -149,9 +149,9 @@ removePrimer <- function(fastqFileR1, fastqFileR2, outputFile, primerFwd, primer
   gc()
   gc()
   if(filteredReads==0)
-    return(c(numReadIn=totalReads, numReadOut=filteredReads, FileR1=NA, FileR2=NA))
+    return(list(numReadIn=totalReads, numReadOut=filteredReads, FileR1=NA_character_, FileR2=NA_character_))
   else
-    return(c(numReadIn=totalReads, numReadOut=filteredReads, 
+    return(list(numReadIn=totalReads, numReadOut=filteredReads, 
            FileR1=paste(outputFile, "_F.fastq.gz", sep=""), FileR2=paste(outputFile, "_R.fastq.gz", sep="")))
 }
 
@@ -174,7 +174,7 @@ mergeAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, mergePrefix=
     args <- paste("--fastq_mergepairs", fastqFileR1[i], "--reverse", fastqFileR2[i],
                   "--fastqout", outputFile, "--fastq_truncqual", 1, "--fastq_maxns", 0)
     Rvsearch:::.vsearchBin(args=args)
-    return(c(numRead=NA, ReadFile=outputFile))
+    return(list(numRead=NA_real_, ReadFile=outputFile))
   })
   tab <- do.call(rbind, tab)
   return(tab)
@@ -230,7 +230,7 @@ bindAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, read1Length=N
     if(numReads==0)
       return(NULL)
     else
-      return(c(numRead=numReads, ReadFile=outputFile))
+      return(list(numRead=numReads, ReadFile=outputFile))
   })
   tab <- do.call(rbind, tab)
   return(tab)
