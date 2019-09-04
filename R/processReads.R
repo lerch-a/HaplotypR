@@ -176,7 +176,7 @@ mergeAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, mergePrefix=
     Rvsearch:::.vsearchBin(args=args)
     return(list(numRead=NA_real_, ReadFile=outputFile))
   })
-  tab <- do.call(rbind, tab)
+  tab <- do.call(rbind.data.frame, c(tab, stringsAsFactors = FALSE))
   return(tab)
 }
 
@@ -232,6 +232,6 @@ bindAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, read1Length=N
     else
       return(list(numRead=numReads, ReadFile=outputFile))
   })
-  tab <- do.call(rbind, tab)
+  tab <- do.call(rbind.data.frame, c(tab, stringsAsFactors = FALSE))
   return(tab)
 }
