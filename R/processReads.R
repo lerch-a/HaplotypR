@@ -149,10 +149,11 @@ removePrimer <- function(fastqFileR1, fastqFileR2, outputFile, primerFwd, primer
   gc()
   gc()
   if(filteredReads==0)
-    return(list(numReadIn=totalReads, numReadOut=filteredReads, FileR1=NA_character_, FileR2=NA_character_))
+    return(data.frame(numReadIn=totalReads, numReadOut=filteredReads, FileR1=NA_character_, FileR2=NA_character_, stringsAsFactors=F))
   else
-    return(list(numReadIn=totalReads, numReadOut=filteredReads, 
-           FileR1=paste(outputFile, "_F.fastq.gz", sep=""), FileR2=paste(outputFile, "_R.fastq.gz", sep="")))
+    return(data.frame(numReadIn=totalReads, numReadOut=filteredReads, 
+                      FileR1=paste(outputFile, "_F.fastq.gz", sep=""), FileR2=paste(outputFile, "_R.fastq.gz", sep=""), 
+                      stringsAsFactors=F))
 }
 
 mergeAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, mergePrefix="_merge", progressReport=message){
@@ -174,9 +175,9 @@ mergeAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, mergePrefix=
     args <- paste("--fastq_mergepairs", fastqFileR1[i], "--reverse", fastqFileR2[i],
                   "--fastqout", outputFile, "--fastq_truncqual", 1, "--fastq_maxns", 0)
     Rvsearch:::.vsearchBin(args=args)
-    return(list(numRead=NA_real_, ReadFile=outputFile))
+    return(data.frame(numRead=NA_integer_, ReadFile=outputFile, stringsAsFactors=F))
   })
-  tab <- do.call(rbind.data.frame, c(tab, stringsAsFactors = FALSE))
+  tab <- do.call(rbind, tab, stringsAsFactors=F)
   return(tab)
 }
 
@@ -230,8 +231,8 @@ bindAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, read1Length=N
     if(numReads==0)
       return(NULL)
     else
-      return(list(numRead=numReads, ReadFile=outputFile))
+      return(data.frame(numRead=numReads, ReadFile=outputFile, stringsAsFactors=F))
   })
-  tab <- do.call(rbind.data.frame, c(tab, stringsAsFactors = FALSE))
+  tab <- do.call(rbind, tab, stringsAsFactors=F)
   return(tab)
 }
