@@ -156,6 +156,31 @@ removePrimer <- function(fastqFileR1, fastqFileR2, outputFile, primerFwd, primer
                       stringsAsFactors=F))
 }
 
+demultiplexByMarker <- function(sampleTable, markerTable, trimFilenameExt="R1\\.fastq.gz", progressReport=message){
+  resM <- do.call(rbind, lapply(1:dim(markerTable)[1], function(j){
+    mID <- as.character(markerTable[j, "MarkerID"])
+    adapterF <- as.character(markerTable[j, "Forward"])
+    adapterR <- as.character(markerTable[j, "Reverse"])
+    
+    # check and set progress report function
+    if(!is.function(progressReport))
+      progressReport <- message
+    msg <- paste("Processing marker", mID, sep=" ")
+    progressReport(detail=msg)
+    
+    # process each file demultiplexed by sample
+    res <- do.call(rbind.data.frame, lapply(seq_along(sampleTable$FileR1), function(i){
+      outputFile <- file.path(outDeplexMarker, sub(trimFilenameExt, mID, basename(as.character(sampleTable$FileR1)[i])))
+      # demultiplex by marker and truncate primer sequence
+      removePrimer(as.character(sampleTable$FileR1)[i], as.character(sampleTable$FileR2)[i], outputFile, 
+                   adapterF, adapterR, max.mismatch=2, with.indels=F)
+    }))
+    cbind.data.frame(BarcodePair=as.character(sampleTable$BarcodePair), MarkerID=mID, res, stringsAsFactors=F)
+  }))
+  resM <- merge.data.frame(sampleTable[,c("SampleID", "SampleName", "BarcodePair")], resM, by="BarcodePair")
+  return(resM)
+}
+
 mergeAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, mergePrefix="_merge", progressReport=message){
   
   if(length(fastqFileR1) != length(fastqFileR2))
@@ -167,7 +192,7 @@ mergeAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, mergePrefix=
     # check and set progress report function
     if(!is.function(progressReport))
       progressReport <- message
-    msg <- paste("Processing file", basename(fastqFileR1[i]), "and", basename(fastqFileR2[i]))
+    msg <- paste("Processing file", basename(fastqFileR1[i]), "and", basename(fastqFileR2[i]), "...")
     progressReport(detail=msg, value=i)
     
     outputFile <- file.path(outputDir, sub("_F\\.fastq.gz", "", basename(fastqFileR1[i])))
@@ -193,7 +218,7 @@ bindAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, read1Length=N
     # check and set progress report function
     if(!is.function(progressReport))
       progressReport <- message
-    msg <- paste("Processing file", basename(fastqFileR1[i]), "and", basename(fastqFileR2[i]))
+    msg <- paste("Processing file", basename(fastqFileR1[i]), "and", basename(fastqFileR2[i]), "...")
     progressReport(detail=msg, value=i)
     
     outputFile <- file.path(outputDir, sub("_F\\.fastq.gz", "", basename(fastqFileR1[i])))
