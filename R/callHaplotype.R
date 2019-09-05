@@ -143,10 +143,9 @@ callHaplotype <- function(x, detectability=1/100, minHaplotypCoverage=3, minRepl
   return(x)
 }
 
-createFinalHaplotypTable <- function(outputDir=outputDir, sampleTable=procReads, 
-                                     snpList=snpLst, postfix=postfix, 
-                                     minHaplotypCoverage=minCov, minReplicate=minOccHap, 
-                                     detectability=detectionLimit, minSampleCoverage=minCovSample){
+createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refSeq, snpList, postfix, 
+                                     minHaplotypCoverage=3, minReplicate=2, 
+                                     detectability=1/100, minSampleCoverage=300){
   devMode <- getOption("HaplotypR.devel")
   if(is.null(devMode))
     devMode <- F
@@ -178,9 +177,9 @@ createFinalHaplotypTable <- function(outputDir=outputDir, sampleTable=procReads,
     chimeraFilenames <- checkChimeras(clusterFilenames[,"RepresentativeFile"], method="vsearch")
     
     # create an overview table
-    overviewHap <- createHaplotypOverviewTable(fnAllSeq,
-                                               clusterFilenames, chimeraFilenames,
-                                               refSeq[marker], potSNPLst)
+    overviewHap <- createHaplotypOverviewTable(allHaplotypesFilenames=fnAllSeq, 
+                                               clusterFilenames=clusterFilenames, chimeraFilenames=chimeraFilenames,
+                                               referenceSequence=refSeq[marker], snpList=potSNPLst)
     
     ## create final haplotype
     overviewHap$FinalHaplotype <- factor(NA, levels = c("Singelton", "Chimera", "Indels", marker))
@@ -201,9 +200,14 @@ createFinalHaplotypTable <- function(outputDir=outputDir, sampleTable=procReads,
     if(devMode)
       write.table(overviewHap, file=file.path(outputDir, sprintf("HaplotypeOverviewTable_%s%s.txt", marker, postfix)), sep="\t")
     
-    # runCallHaplotype  <- function(input, output, session, volumes){
-    
-    
+    # getHaplotype sequence
+    # Todo check if remove Indels on
+    snpsPos <- as.integer(snpList[[marker]][,"Pos"])
+    hapSeq <- lapply(snps, function(sp){
+      replaceLetterAt(refSeq[[marker]], at=snpsPos, letter=sp)
+    })
+    hapSeq <- DNAStringSet(hapSeq)
+    writeFasta(hapSeq, file.path(outputDir, file=sprintf("%s_finalHaplotypeSeq%s.fasta", marker, postfix)))
     
     repfile <- clusterFilenames[,"RepresentativeFile"]
     
