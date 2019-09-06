@@ -271,6 +271,7 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refSeq
         tt$FlagChimera <- tt$Haplotype %in% chim
         return(tt)
       }))
+    })
     lst <- do.call(rbind, lst)
     
     write.table(lst, 
