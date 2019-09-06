@@ -44,6 +44,7 @@ repo <- clone("https://github.com/lerch-a/Rvsearch.git", path)
 clone("https://github.com/torognes/vsearch.git", file.path(path, "src", "vsearch"))
 install(path)
 
+detach("package:HaplotypR", unload=TRUE)
 devtools::install_github("lerch-a/HaplotypR")
 ```
 
@@ -134,29 +135,13 @@ dir.create(outDeplexMarker)
   
 # process each marker
 markerTab <- read.delim(primerFile, stringsAsFactors=F)
-dePlexMarker <- lapply(1:dim(markerTab)[1], function(j){
-  mID <- as.character(markerTab[j, "MarkerID"])
-  adapterF <- as.character(markerTab[j, "Forward"])
-  adapterR <- as.character(markerTab[j, "Reverse"])
-  
-  # process each file demultiplexed by sample
-  res <- lapply(seq_along(dePlexSample$FileR1), function(i){
-    outputFile <- file.path(outDeplexMarker, sub("R1\\.fastq.gz", mID, basename(as.character(dePlexSample$FileR1)[i])))
-    
-    # demultiplex by marker and truncate primer sequence
-    removePrimer(as.character(dePlexSample$FileR1)[i], as.character(dePlexSample$FileR2)[i], outputFile, 
-                 adapterF, adapterR, max.mismatch=2, with.indels=F)
-  })
-  cbind(BarcodePair=as.character(dePlexSample$BarcodePair), MarkerID=mID, do.call(rbind, res))
-})
-dePlexMarker <- do.call(rbind, dePlexMarker)
-dePlexMarker <- merge.data.frame(dePlexSample[,c("SampleID", "SampleName", "BarcodePair")], dePlexMarker, by="BarcodePair")
+dePlexMarker <- demultiplexByMarker(dePlexSample, markerTab)
 
 # save summary table
 write.table(dePlexMarker, file.path(outputDir, "demultiplexMarkerSummary.txt"), sep="\t", row.names=F)
 ```
 
-Trim and fuse paired reads
+Trim sequence reads
 ```R
 # create output subdirectory 
 outProcFiles <- file.path(outputDir, "processedReads")
@@ -175,11 +160,23 @@ lapply(seq_along(refSeq), function(i){
   writeFasta(refSeq[i], file.path(outputDir, paste(names(refSeq)[i], postfix, ".fasta", sep="")))
 })
 
+```
+
+Fuse paired reads either by fixed length
+```R
 # Fuse paired read
 procReads <- bindAmpliconReads(as.character(dePlexMarker$FileR1), as.character(dePlexMarker$FileR2), outProcFiles, 
                          read1Length=numNtF, read2Length=numNtR)
 procReads <- cbind(dePlexMarker[,c("SampleID", "SampleName","BarcodePair", "MarkerID")], procReads)
 write.table(procReads, file.path(outputDir, sprintf("processedReadSummary%s.txt", postfix)), sep="\t", row.names=F)
+```
+
+or by merging the overlap of the forward and reverse read (using vsearch wrapper).
+```R
+procReadsMerge <- mergeAmpliconReads(as.character(dePlexMarker$FileR1), as.character(dePlexMarker$FileR2), outProcFiles)
+procReadsMerge <- cbind(dePlexMarker[,c("SampleID", "SampleName","BarcodePair", "MarkerID")], procReadsMerge)
+write.table(procReadsMerge, file.path(outputDir, sprintf("processedReadSummary%s.txt", "_merge")), sep="\t", row.names=F, quote=F)
+
 ```
 
 Calculate mismatch rate and call SNPs
