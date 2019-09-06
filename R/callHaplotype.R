@@ -201,13 +201,14 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refSeq
       write.table(overviewHap, file=file.path(outputDir, sprintf("HaplotypeOverviewTable_%s%s.txt", marker, postfix)), sep="\t")
     
     # getHaplotype sequence
-    # Todo check if remove Indels on
-    snpsPos <- as.integer(snpList[[marker]][,"Pos"])
-    hapSeq <- lapply(snps, function(sp){
-      replaceLetterAt(refSeq[[marker]], at=snpsPos, letter=sp)
-    })
-    hapSeq <- DNAStringSet(hapSeq)
-    writeFasta(hapSeq, file.path(outputDir, file=sprintf("%s_finalHaplotypeSeq%s.fasta", marker, postfix)))
+    if(!is.null(refSeq)){
+      snpsPos <- as.integer(snpList[[marker]][,"Pos"])
+      hapSeq <- lapply(snps, function(sp){
+        replaceLetterAt(refSeq[[marker]], at=snpsPos, letter=sp)
+      })
+      hapSeq <- DNAStringSet(hapSeq)
+      writeFasta(hapSeq, file.path(outputDir, file=sprintf("%s_HaplotypeSeq%s.fasta", marker, postfix)))
+    }
     
     repfile <- clusterFilenames[,"RepresentativeFile"]
     
