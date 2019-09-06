@@ -49,7 +49,7 @@ detach("package:HaplotypR", unload=TRUE)
 devtools::install_github("lerch-a/HaplotypR")
 ```
 
-# Run HaplotypR as Shiny App
+# Run HaplotypR as Shiny App (currently dysfunctional)
 
 Load HaplotypR package:
 ```R
