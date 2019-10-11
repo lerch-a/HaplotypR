@@ -11,7 +11,7 @@ demultiplexReads <- function(fastqFileFwd, fastqFileRev, barcodeFileFwd, barcode
   barcodesRev <- Biostrings::readDNAStringSet(barcodeFileRev)
   barcodesRevLength <- unique(width(barcodesRev))
   if(length(barcodesRevLength)>1)
-    stop("Barcodes length must have equal length.")  
+    stop("Barcodes length must have equal length.")
   
   # check existing output files
   of <- list.files(path=outputDir, pattern=names(barcodesFwd))
@@ -36,12 +36,12 @@ demultiplexReads <- function(fastqFileFwd, fastqFileRev, barcodeFileFwd, barcode
     
     if(is.null(adapterFwd)){
       sr1_trim <- narrow(sr1, start=1, width=barcodesFwdLength)
-      sr2_trim <- narrow(sr2, start=1, width=barcodesRevLength) 
+      sr2_trim <- narrow(sr2, start=1, width=barcodesRevLength)
     } else {
       
       #      matchPDict( whichPDict
       #       index <- vmatchPattern(adapterFwd, sread(sr1), max.mismatch=max.mismatch, with.indels=with.indels)
-      #       
+      #
       #       fPrimEnd <- vmatchPattern(primerFw, sread(sr1), max.mismatch=max.mismatch, with.indels=with.indels)
       #       fPrimEnd <- unlist(lapply(fPrimEnd, end))
       #index <- unlist(lapply(index, length))==1
@@ -74,27 +74,27 @@ demultiplexReads <- function(fastqFileFwd, fastqFileRev, barcodeFileFwd, barcode
   # Format output
   tab <- as.data.frame(table(sumDemultiplex), stringsAsFactors=F)
   colnames(tab) <- c("BarcodePair", "ReadNumbers")
-
+  
   outfiles <- list.files(outputDir)
   names(outfiles) <- sub("_R..fastq.gz$", "", outfiles)
   outFileR1 <- outfiles[grep("_R1.fastq.gz$", outfiles)][tab$BarcodePair]
   outFileR2 <- outfiles[grep("_R2.fastq.gz$", outfiles)][tab$BarcodePair]
   tab$FileR1 <- file.path(outputDir, outFileR1)
   tab$FileR2 <- file.path(outputDir, outFileR2)
-
+  
   return(invisible(tab))
 }
 
 
-removePrimer <- function(fastqFileR1, fastqFileR2, outputFile, primerFwd, primerRev, 
-                          max.mismatch=0, with.indels=F, outputPrimerSequence=F, progressReport=message){
+removePrimer <- function(fastqFileR1, fastqFileR2, outputFile, primerFwd, primerRev,
+                         max.mismatch=0, with.indels=F, outputPrimerSequence=F, progressReport=message){
   
   # check and set progress report function
   if(!is.function(progressReport))
     progressReport <- message
   msg <- paste("Processing file", basename(fastqFileR1), "and", basename(fastqFileR2))
   progressReport(detail=msg)
-
+  
   if(length(fastqFileR1) != length(fastqFileR2))
     stop("Vector length of fastqFileR1 and fastqFileR2 not identical.")
   
@@ -107,38 +107,43 @@ removePrimer <- function(fastqFileR1, fastqFileR2, outputFile, primerFwd, primer
     sr2 <- yield(f2)
     totalReads <- totalReads+length(sr1)
     
-    index <- vmatchPattern(primerFwd, sread(sr1), max.mismatch=max.mismatch, with.indels=with.indels)
-    index <- unlist(lapply(index, length))==1
+    index <- which(vcountPattern(primerFwd, sread(sr1), max.mismatch=max.mismatch, with.indels=with.indels) == 1)
     sr1 <- sr1[index]
     sr2 <- sr2[index]
     
-    index <- vmatchPattern(primerRev, sread(sr2), max.mismatch=max.mismatch, with.indels=with.indels)
-    index <- unlist(lapply(index, length))==1
+    index <- which(vcountPattern(primerRev, sread(sr2), max.mismatch=max.mismatch, with.indels=with.indels) == 1)
     sr2 <- sr2[index]
     sr1 <- sr1[index]
     
     if(length(sr1)>1){
       fPrimEnd <- vmatchPattern(primerFwd, sread(sr1), max.mismatch=max.mismatch, with.indels=with.indels)
-      fPrimEnd <- unlist(lapply(fPrimEnd, end))
-      sr1_trim <- narrow(sr1, start=fPrimEnd, width=NA)
+      fPrimEnd <- unlist(endIndex(fPrimEnd))
+      sr1_trim <- narrow(sr1, start=fPrimEnd+1, width=NA)
       start <- fPrimEnd-nchar(primerFwd)+1
       sr1_prim <- narrow(sr1, start=ifelse(start<1, 1, start), end=fPrimEnd)
       
       rPrimEnd <- vmatchPattern(primerRev, sread(sr2), max.mismatch=max.mismatch, with.indels=with.indels)
-      rPrimEnd <- unlist(lapply(rPrimEnd, end))
-      sr2_trim <- narrow(sr2, start=rPrimEnd, width=NA)
-      start <-  rPrimEnd-nchar(primerRev)+1
+      rPrimEnd <- unlist(endIndex(rPrimEnd))
+      sr2_trim <- narrow(sr2, start=rPrimEnd+1, width=NA)
+      start <-rPrimEnd-nchar(primerRev)+1
       sr2_prim <- narrow(sr2, start=ifelse(start<1, 1, start), end=rPrimEnd)
       
+      # ensure no zero length reads present
+      index <- which((width(sr1_trim) > 0) & (width(sr2_trim) > 0))
+      sr1_trim <- sr1_trim[index]
+      sr2_trim <- sr2_trim[index]
+      sr1_prim <- sr1_prim[index]
+      sr2_prim <- sr2_prim[index]
+      
       if(outputPrimerSequence){
-        writeFastq(sr1_prim, 
+        writeFastq(sr1_prim,
                    file=paste(outputFile, "_primerF.fastq.gz", sep=""), mode=mode, compress=T)
-        writeFastq(sr2_prim, 
+        writeFastq(sr2_prim,
                    file=paste(outputFile, "_primerR.fastq.gz", sep=""), mode=mode, compress=T)
       }
       writeFastq(sr1_trim, file=paste(outputFile, "_F.fastq.gz", sep=""), mode=mode, compress=T)
       writeFastq(sr2_trim, file=paste(outputFile, "_R.fastq.gz", sep=""), mode=mode, compress=T)
-
+      
       mode <- "a"
       filteredReads <- filteredReads + length(sr1_trim)
     }
@@ -151,8 +156,8 @@ removePrimer <- function(fastqFileR1, fastqFileR2, outputFile, primerFwd, primer
   if(filteredReads==0)
     return(data.frame(numReadIn=totalReads, numReadOut=filteredReads, FileR1=NA_character_, FileR2=NA_character_, stringsAsFactors=F))
   else
-    return(data.frame(numReadIn=totalReads, numReadOut=filteredReads, 
-                      FileR1=paste(outputFile, "_F.fastq.gz", sep=""), FileR2=paste(outputFile, "_R.fastq.gz", sep=""), 
+    return(data.frame(numReadIn=totalReads, numReadOut=filteredReads,
+                      FileR1=paste(outputFile, "_F.fastq.gz", sep=""), FileR2=paste(outputFile, "_R.fastq.gz", sep=""),
                       stringsAsFactors=F))
 }
 
@@ -172,7 +177,7 @@ demultiplexByMarker <- function(sampleTable, markerTable, trimFilenameExt="R1\\.
     res <- do.call(rbind.data.frame, lapply(seq_along(sampleTable$FileR1), function(i){
       outputFile <- file.path(outDeplexMarker, sub(trimFilenameExt, mID, basename(as.character(sampleTable$FileR1)[i])))
       # demultiplex by marker and truncate primer sequence
-      removePrimer(as.character(sampleTable$FileR1)[i], as.character(sampleTable$FileR2)[i], outputFile, 
+      removePrimer(as.character(sampleTable$FileR1)[i], as.character(sampleTable$FileR2)[i], outputFile,
                    adapterF, adapterR, max.mismatch=2, with.indels=F)
     }))
     cbind.data.frame(BarcodePair=as.character(sampleTable$BarcodePair), MarkerID=mID, res, stringsAsFactors=F)
@@ -240,11 +245,11 @@ bindAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, read1Length=N
         sr2 <- reverseComplement(narrow(sr2, start=1, width=ifelse(width(sr2)>=read2Length, read2Length, NA)))
       else
         sr2 <- reverseComplement(sr2)
-        
       
-      writeFastq(ShortReadQ(sread=xscat(sread(sr1), sread(sr2)), 
-                            qual=xscat(quality(quality(sr1)), quality(quality(sr2))), 
-                            id=id(sr1)), 
+      
+      writeFastq(ShortReadQ(sread=xscat(sread(sr1), sread(sr2)),
+                            qual=xscat(quality(quality(sr1)), quality(quality(sr2))),
+                            id=id(sr1)),
                  file=outputFile, mode=mode, compress=T)
       mode <- "a"
     }
