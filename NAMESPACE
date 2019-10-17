@@ -5,5 +5,7 @@ import(S4Vectors)
 import(Biostrings)
 import(ShortRead)
 import(BiocParallel)
+importFrom(magrittr,"%>%")
+importFrom(ShortRead,id)
 
 exportPattern("^[[:alpha:]]+")

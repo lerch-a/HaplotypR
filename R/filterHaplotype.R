@@ -6,10 +6,10 @@ checkChimeras <- function(representativesFile, method="vsearch", progressReport=
   sortfile <- unlist(lapply(seq_along(representativesFile), function(i){
     #vsearch --sortbysize R-1_Rep1.representatives.fasta --output R-1_Rep1.representatives_sortbysize.fasta
     sr1 <- readFasta(representativesFile[i])
-    clusterSize <- as.integer(do.call(rbind, strsplit(as.character(sr1@id), "_"))[,2])
+    clusterSize <- as.integer(do.call(rbind, strsplit(as.character(id(sr1)), "_"))[,2])
     sr1 <- sr1[order(clusterSize, decreasing=T)]
     sortfile <- sub(".fasta", "_sort.fasta", representativesFile[i])
-    writeFasta(ShortRead(sread(sr1), BStringSet(sub("_", ";size=", as.character(sr1@id)))), sortfile)
+    writeFasta(ShortRead(sread(sr1), BStringSet(sub("_", ";size=", as.character(id(sr1))))), sortfile)
     return(sortfile)
   }))
   
@@ -37,10 +37,10 @@ checkChimeras <- function(representativesFile, method="vsearch", progressReport=
 
 
 createHaplotypOverviewTable <- function(allHaplotypesFilenames, clusterFilenames, chimeraFilenames, referenceSequence,
-                                        snpSet, maxDel = 15L, maxIns = 15L){
+                                        snpSet, maxDel = 9L, maxIns = 9L){
   
   sr1 <- readFasta(allHaplotypesFilenames)
-  overviewHap <- data.frame(HaplotypesName=as.character(sr1@id))
+  overviewHap <- data.frame(HaplotypesName=as.character(id(sr1)))
   rownames(overviewHap) <- overviewHap$HaplotypesName
 
   ######
@@ -72,7 +72,7 @@ createHaplotypOverviewTable <- function(allHaplotypesFilenames, clusterFilenames
   #sampleName <- do.call(rbind, strsplit(basename(chimerafile), "\\."))[,1]
   haplotypes <- lapply(seq_along(chimerafile), function(i){
     sr1 <- readFasta(chimerafile[i])
-    vec <- do.call(rbind, strsplit(as.character(sr1@id), ";size="))
+    vec <- do.call(rbind, strsplit(as.character(id(sr1)), ";size="))
     clusterResp <- vec[,1]
     clusterSize <- as.integer(vec[,2])
     clusterResp <- clusterResp[clusterSize>1]
@@ -87,7 +87,7 @@ createHaplotypOverviewTable <- function(allHaplotypesFilenames, clusterFilenames
   bordchimerafile <- chimeraFilenames[,"BorderchimeraFile"]
   haplotypes <- lapply(seq_along(bordchimerafile), function(i){
     sr1 <- readFasta(bordchimerafile[i])
-    vec <- do.call(rbind, strsplit(as.character(sr1@id), ";size="))
+    vec <- do.call(rbind, strsplit(as.character(id(sr1)), ";size="))
     clusterResp <- vec[,1]
     clusterSize <- as.integer(vec[,2])
     clusterResp <- clusterResp[clusterSize>1]
@@ -103,7 +103,7 @@ createHaplotypOverviewTable <- function(allHaplotypesFilenames, clusterFilenames
   nonchimerafile <- chimeraFilenames[,"NonchimeraFile"]
   haplotypes <- lapply(seq_along(nonchimerafile), function(i){
     sr1 <- readFasta(nonchimerafile[i])
-    vec <- do.call(rbind, strsplit(as.character(sr1@id), ";size="))
+    vec <- do.call(rbind, strsplit(as.character(id(sr1)), ";size="))
     clusterResp <- vec[,1]
     clusterSize <- as.integer(vec[,2])
     clusterResp <- clusterResp[clusterSize>1]
@@ -124,25 +124,24 @@ createHaplotypOverviewTable <- function(allHaplotypesFilenames, clusterFilenames
   repfile <- clusterFilenames[,"RepresentativeFile"]
   for (fn in repfile){
     sr1 <- readFasta(fn)
-    vec <- do.call(rbind, strsplit(as.character(sr1@id), "_"))
+    vec <- do.call(rbind, strsplit(as.character(id(sr1)), "_"))
     at <- match(vec[,1], overviewHap$HaplotypesName)
     clusterSize <- as.integer(vec[,2])
     overviewHap$representatives[at] <- T
     overviewHap$singelton[at[clusterSize>1]] <- F
-  } 
-  
+  }
   
   #  Indels
   overviewHap$indels <- F
-  hap_set <- with(overviewHap, HaplotypesName[representatives & ! singelton]) %>% as.character()
+  hap_set <- as.character(with(overviewHap, HaplotypesName[representatives & ! singelton]))
 	haps <- readDNAStringSet(allHaplotypesFilenames)[hap_set]
 	aln1 <- pairwiseAlignment(haps, referenceSequence, type="global")
-	del_width <- as.list(deletion(aln1)) %>% map_int(~ sum(width(.)))
-	ins_width <- as.list(insertion(aln1)) %>% map_int(~ sum(width(.)))
+	del_width <- as.list(deletion(aln1)) %>% purrr::map_int(~ sum(width(.)))
+	ins_width <- as.list(insertion(aln1)) %>% purrr::map_int(~ sum(width(.)))
 	indels_at <- which(del_width > maxDel | ins_width > maxIns)
 	overviewHap$indels[match(hap_set, overviewHap$HaplotypesName)[indels_at]] <- T
 	
-	# snps
+	# SNPs
 	overviewHap$snps <- rep(NA_character_, nrow(overviewHap))
   if (length(indels_at) > 0){
     hap_set <- hap_set[-indels_at]
@@ -150,20 +149,16 @@ createHaplotypOverviewTable <- function(allHaplotypesFilenames, clusterFilenames
   }
 	aln2 <- pairwiseAlignment(haps, referenceSequence, type="global")
   snp_df <-
-    map_df(seq_along(hap_set), function(i){
-      snps <- 
-        tibble(
-          Ref = alignedSubject(aln2[i]) %>% as.matrix() %>% c(),
-          hap = alignedPattern(aln2[i]) %>% as.matrix() %>% c()) %>% 
-        filter(Ref %in% c('A', 'T', 'C', 'G')) %>% 
-        mutate(Pos = seq_len(n())) %>%
-        filter(hap %in% c('A', 'T', 'C', 'G'))  %>% 
-        select(Pos = Pos, Ref = Ref, alt = hap) %>% 
-        right_join(snpSet, c('Pos', 'Ref')) %>% 
-        summarise(snps = if_else(is.na(alt), Ref, alt) %>% paste0(collapse = '')) %>% 
-        mutate(uid = hap_set[i])
+    purrr::map_df(seq_along(hap_set), function(i) {
+      mismatchSummary(aln2[i])$subject %>% 
+        {`if`('Pattern' %in% colnames(.), ., dplyr::mutate(., Pattern = character()))} %>% 
+        dplyr::select(Pos=SubjectPosition, Ref=Subject, Alt=Pattern) %>% 
+        dplyr::mutate_if(is.factor, as.character) %>% 
+        dplyr::right_join(snpSet, c('Pos', 'Ref')) %>% 
+        dplyr::summarise(snp = dplyr::if_else(is.na(Alt), Ref, Alt) %>% paste0(collapse = '')) %>%
+        dplyr::mutate(uid = hap_set[i])
     })
   
-  overviewHap$snps[match(snp_df$uid, overviewHap$HaplotypesName)] <- snp_df$snps
+  overviewHap$snps[match(snp_df$uid, overviewHap$HaplotypesName)] <- snp_df$snp
   return(overviewHap)
 }
