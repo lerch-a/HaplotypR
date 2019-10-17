@@ -273,8 +273,8 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refSeq
     
     
     # check replicates
-    idx <- split(1:dim(haplotypesSample)[2], samTab$SampleID)
-    markerRes <- purrr::map_df(idx, function(i) {
+    # idx <- split(1:dim(haplotypesSample)[2], samTab$SampleID)
+    markerRes <- purrr::map_df(seq_len(nrow(samTab)), function(i) {
       reads <- callHaplotype(haplotypesSample[,i, drop=F], minHaplotypCoverage=minHaplotypCoverage, 
                              minReplicate=minReplicate, detectability=detectability, minSampleCoverage=minSampleCoverage, 
                              reportBackground=T)
@@ -290,7 +290,7 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refSeq
       hIdx <- grep(marker, tab$Haplotype)
       if(length(hIdx)>2) {
         chim <- flagChimera(tab[hIdx,], overviewHap)
-        tt$FlagChimera <- tab$Haplotype %in% chim
+        tab$FlagChimera <- tab$Haplotype %in% chim
       }
       return(tab)
     })
