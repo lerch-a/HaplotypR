@@ -5,7 +5,7 @@ createContingencyTable <- function(inputFiles, sampleNames, dereplicated=F, inpu
   
   if(is.null(replicatNames))
     replicatNames <- rep("", length(sampleNames))
-
+  
   env <- environment()
   env$allHaplotypes <- DNAStringSet()
   if(!is.null(haplotypeUIDFile)){
@@ -14,7 +14,7 @@ createContingencyTable <- function(inputFiles, sampleNames, dereplicated=F, inpu
     names(env$allHaplotypes) <- id(allHap)
     rm(allHap)
   } 
-
+  
   contingencyList <- lapply(seq_along(inputFiles), function(i){
     
     # check and set progress report function
@@ -29,7 +29,7 @@ createContingencyTable <- function(inputFiles, sampleNames, dereplicated=F, inpu
     } else {
       inputReads <- readFastq(inputFiles[i])
     }
-      
+    
     # remove reads with Ns
     idx <- grep("N", sread(inputReads), invert=T)
     inputReads <- inputReads[idx]
@@ -82,7 +82,7 @@ createContingencyTable <- function(inputFiles, sampleNames, dereplicated=F, inpu
 }
 
 callHaplotype <- function(x, detectability=1/100, minHaplotypCoverage=3, minReplicate=2, minSampleCoverage=300, reportBackground=T, defineBackground=NULL, ...) {
-
+  
   # check minHaplotypCoverage argument
   if(minHaplotypCoverage < 3){
     arguments <- list(...)
@@ -99,18 +99,18 @@ callHaplotype <- function(x, detectability=1/100, minHaplotypCoverage=3, minRepl
   # if NA value replace with zero 
   x[is.na(x)] <- 0
   
- 	# remove low covarage sample
+  # remove low covarage sample
   cov <- colSums(x)
   idx <- cov>=minSampleCoverage
   if(all(!idx)){
-  	x[,!idx] <- NA
-  	x <- x[1,, drop=F]
-  	rownames(x) <- NA
-  	return(x)
+    x[,!idx] <- NA
+    x <- x[1,, drop=F]
+    rownames(x) <- NA
+    return(x)
   }else{
-  	x[,!idx] <- NA 
+    x[,!idx] <- NA 
   }
-
+  
   # sample replicated
   minReplicate <- min(dim(x)[2], minReplicate)
   
@@ -121,16 +121,16 @@ callHaplotype <- function(x, detectability=1/100, minHaplotypCoverage=3, minRepl
   idx <- rownames(x) %in% defineBackground
   background <- x[idx,, drop=F]
   x <- x[!idx,, drop=F]
-
+  
   # check for noise haplotype
   minCov <- colSums(x, na.rm=T)*detectability
   minCov[minCov<minHaplotypCoverage] <- minHaplotypCoverage
   if(dim(x)[1]>0){
-  	noiseIdx <- rowSums(t(t(x)/minCov) >= 1, na.rm=T) < minReplicate # only haplotypes present in minimum replicates
-  	lowCnt <- colSums(x[noiseIdx,,drop=F], na.rm=T)
-  	x <- x[!noiseIdx,,drop=F]
+    noiseIdx <- rowSums(t(t(x)/minCov) >= 1, na.rm=T) < minReplicate # only haplotypes present in minimum replicates
+    lowCnt <- colSums(x[noiseIdx,,drop=F], na.rm=T)
+    x <- x[!noiseIdx,,drop=F]
   }else{
-  	lowCnt <- 0
+    lowCnt <- 0
   }
   
   # add background to haplotyp counts
@@ -138,9 +138,9 @@ callHaplotype <- function(x, detectability=1/100, minHaplotypCoverage=3, minRepl
     if(dim(x)[1]>0)
       x <- rbind(Noise=lowCnt, background, x[order(rowSums(x)),,drop=F])
     else
-    	x <- rbind(Noise=lowCnt, background)
+      x <- rbind(Noise=lowCnt, background)
   }
-
+  
   return(x)
 }
 
@@ -168,9 +168,13 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refSeq
   if(is.null(devMode))
     devMode <- F
   
-  outFreqFiles <- file.path(outputDir, "frequencyFiles")
-  dir.create(outFreqFiles, recursive = T)
+  outFreqDir <- file.path(outputDir, "frequencyFiles")
+  dir.create(outFreqDir, recursive = T)
   purrr::map_df(markerTable$MarkerID, function(marker){
+    
+    outFreqFiles <- file.path(outFreqDir, marker)
+    dir.create(outFreqFiles)
+    
     samTab <- sampleTable[sampleTable$MarkerID == marker,]
     snpSet <- as.data.frame(snpList[[marker]], stringsAsFactors = FALSE)
     snpSet$Pos <- as.integer(snpSet$Pos)
@@ -272,8 +276,8 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refSeq
     idx <- split(1:dim(haplotypesSample)[2], samTab$SampleID)
     markerRes <- purrr::map_df(idx, function(i) {
       reads <- callHaplotype(haplotypesSample[,i, drop=F], minHaplotypCoverage=minHaplotypCoverage, 
-                           minReplicate=minReplicate, detectability=detectability, minSampleCoverage=minSampleCoverage, 
-                           reportBackground=T)
+                             minReplicate=minReplicate, detectability=detectability, minSampleCoverage=minSampleCoverage, 
+                             reportBackground=T)
       
       tab <- data.frame(SampleID = samTab$SampleID[i],
                         MarkerID = as.character(samTab$MarkerID[i]),
