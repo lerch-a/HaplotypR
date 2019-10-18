@@ -37,7 +37,7 @@ checkChimeras <- function(representativesFile, method="vsearch", progressReport=
 
 
 createHaplotypOverviewTable <- function(allHaplotypesFilenames, clusterFilenames, chimeraFilenames, referenceSequence,
-                                        snpSet, maxDel = 9L, maxIns = 9L){
+                                        snpSet, maxDel = 0L, maxIns = 0L){
   
   sr1 <- readFasta(allHaplotypesFilenames)
   overviewHap <- data.frame(HaplotypesName=as.character(id(sr1)))
@@ -136,28 +136,31 @@ createHaplotypOverviewTable <- function(allHaplotypesFilenames, clusterFilenames
   hap_set <- as.character(with(overviewHap, HaplotypesName[representatives & ! singelton]))
 	haps <- readDNAStringSet(allHaplotypesFilenames)[hap_set]
 	aln1 <- pairwiseAlignment(haps, referenceSequence, type="global")
-	del_width <- as.list(deletion(aln1)) %>% purrr::map_int(~ sum(width(.)))
-	ins_width <- as.list(insertion(aln1)) %>% purrr::map_int(~ sum(width(.)))
+	del_width <- vapply(as.list(deletion(aln1)), function(x) sum(width(x)), numeric(1))
+	ins_width <- vapply(as.list(insertion(aln1)), function(x) sum(width(x)), numeric(1))
 	indels_at <- which(del_width > maxDel | ins_width > maxIns)
 	overviewHap$indels[match(hap_set, overviewHap$HaplotypesName)[indels_at]] <- T
 	
 	# SNPs
-	overviewHap$snps <- rep(NA_character_, nrow(overviewHap))
+	overviewHap$snps <- NA_character_
   if (length(indels_at) > 0){
     hap_set <- hap_set[-indels_at]
     haps <- haps[hap_set]
   }
 	aln2 <- pairwiseAlignment(haps, referenceSequence, type="global")
   snp_df <-
-    purrr::map_df(seq_along(hap_set), function(i) {
-      mismatchSummary(aln2[i])$subject %>% 
-        {`if`('Pattern' %in% colnames(.), ., dplyr::mutate(., Pattern = character()))} %>% 
-        dplyr::select(Pos=SubjectPosition, Ref=Subject, Alt=Pattern) %>% 
-        dplyr::mutate_if(is.factor, as.character) %>% 
-        dplyr::right_join(snpSet, c('Pos', 'Ref')) %>% 
-        dplyr::summarise(snp = dplyr::if_else(is.na(Alt), Ref, Alt) %>% paste0(collapse = '')) %>%
-        dplyr::mutate(uid = hap_set[i])
+    lapply(seq_along(hap_set), function(i) {
+      df1 <- mismatchSummary(aln2[i])$subject
+      df1 <- `if`('Pattern' %in% colnames(df1), df1, { df1$Pattern <- character(); df1 })
+      df1$Subject <- as.character(df1$Subject)
+      df1$Pattern <- as.character(df1$Pattern)
+      df1 <- data.frame(Pos = df1$SubjectPosition, Ref = df1$Subject, Alt = df1$Pattern)
+      df1 <- merge.data.frame(df1, snpSet, by = c('Pos', 'Ref'), all.y = TRUE, sort = FALSE)
+      df1$snp <- ifelse(is.na(df$Alt), df$Ref, df$Alt)
+      df2 <- data.frame(uid = hap_set[i], snp = paste0(df1$snp, collapse = ''))
+      return(df2)
     })
+  snp_df <- do.call(rbind.data.frame, snp_df)
   
   overviewHap$snps[match(snp_df$uid, overviewHap$HaplotypesName)] <- snp_df$snp
   return(overviewHap)

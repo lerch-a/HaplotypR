@@ -147,7 +147,7 @@ callHaplotype <- function(x, detectability=1/100, minHaplotypCoverage=3, minRepl
 createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refSeq, snpList, postfix, 
                                      minHaplotypCoverage=3, minReplicate=2, 
                                      detectability=1/100, minSampleCoverage=300,
-                                     maxDel = 5L, maxIns = 5L){
+                                     maxDel = 0L, maxIns = 0L){
   # check args
   stopifnot(
     is.character(outputDir), length(outputDir) == 1, file.exists(outputDir),
@@ -170,7 +170,7 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refSeq
   
   outFreqDir <- file.path(outputDir, "frequencyFiles")
   dir.create(outFreqDir, recursive = T)
-  purrr::map_df(markerTable$MarkerID, function(marker){
+  res <- lapply(markerTable$MarkerID, function(marker){
     
     outFreqFiles <- file.path(outFreqDir, marker)
     dir.create(outFreqFiles)
@@ -274,7 +274,7 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refSeq
     
     # check replicates
     # idx <- split(1:dim(haplotypesSample)[2], samTab$SampleID)
-    markerRes <- purrr::map_df(seq_len(nrow(samTab)), function(i) {
+    markerRes <- lapply(seq_len(nrow(samTab)), function(i) {
       reads <- callHaplotype(haplotypesSample[,i, drop=F], minHaplotypCoverage=minHaplotypCoverage, 
                              minReplicate=minReplicate, detectability=detectability, minSampleCoverage=minSampleCoverage, 
                              reportBackground=T)
@@ -294,9 +294,12 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refSeq
       }
       return(tab)
     })
+    markerRes <- do.call(rbind.data.frame, markerRes)
     markerResFn <- file.path(outputDir, sprintf("finalHaplotypeList_Hcov%.0f_Scov%.0f_occ%i_sens%.4f_%s%s.txt", 
                                                 minHaplotypCoverage, minSampleCoverage, minReplicate, detectability, marker, postfix))
     write.table(markerRes, file=markerResFn, sep="\t", row.names=F, col.names=T)
     return(markerRes)
   })
+  names(res) <- markerTab$MarkerID
+  return(res)
 }
