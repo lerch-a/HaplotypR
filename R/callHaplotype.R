@@ -244,7 +244,7 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refSeq
       hab
     })
     haplotypesSample <- do.call(cbind, haplotypesSample)
-    haplotypesSample <- haplotypesSample[rowSums(haplotypesSample)>0,]
+    haplotypesSample <- haplotypesSample[rowSums(haplotypesSample)>0, , drop = FALSE]
     colnames(haplotypesSample) <- sub(".representatives.fasta", "", basename(repfile))
     
     overviewHap <- overviewHap[rownames(haplotypesSample),]
