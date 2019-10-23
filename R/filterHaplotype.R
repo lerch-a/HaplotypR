@@ -156,8 +156,10 @@ createHaplotypOverviewTable <- function(allHaplotypesFilenames, clusterFilenames
       df1$Pattern <- as.character(df1$Pattern)
       df1 <- data.frame(Pos = df1$SubjectPosition, Ref = df1$Subject, Alt = df1$Pattern)
       df1 <- merge.data.frame(df1, snpSet, by = c('Pos', 'Ref'), all.y = TRUE, sort = FALSE)
-      df1$snp <- ifelse(is.na(df$Alt), df$Ref, df$Alt)
-      df2 <- data.frame(uid = hap_set[i], snp = paste0(df1$snp, collapse = ''))
+      df1$snp <- ifelse(is.na(df1$Alt), df1$Ref, df1$Alt)
+      df2 <- data.frame(uid = hap_set[i],
+                        snp = paste0(df1$snp, collapse = ''),
+                        stringsAsFactors = FALSE)
       return(df2)
     })
   snp_df <- do.call(rbind.data.frame, snp_df)
