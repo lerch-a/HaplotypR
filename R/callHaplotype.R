@@ -300,6 +300,6 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refSeq
     write.table(markerRes, file=markerResFn, sep="\t", row.names=F, col.names=T)
     return(markerRes)
   })
-  names(res) <- markerTab$MarkerID
+  names(res) <- markerTable$MarkerID
   return(res)
 }
