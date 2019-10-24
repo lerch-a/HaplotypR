@@ -217,7 +217,8 @@ mergeAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, mergePrefix=
     args <- paste("--fastq_mergepairs", fastqFileR1[i], "--reverse", fastqFileR2[i],
                   "--fastqout", outputFile, "--fastq_truncqual", 1, "--fastq_maxns", 0)
     Rvsearch:::.vsearchBin(args=args)
-    return(data.frame(numRead=NA_integer_, ReadFile=outputFile, stringsAsFactors=F))
+    numRead = length(Biostrings::readDNAStringSet(outputFile, format = 'FASTQ'))
+    return(data.frame(numRead=numRead, ReadFile=outputFile, stringsAsFactors=F))
   })
   tab <- do.call(rbind.data.frame, tab)
   return(tab)
