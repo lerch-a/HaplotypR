@@ -112,7 +112,8 @@ dePlexMarker <- demultiplexByMarker(dePlexSample, markerTab, outDeplexMarker)
 write.table(dePlexMarker, file.path(outputDir, "demultiplexMarkerSummary.txt"), sep="\t", row.names=F)
 ```
 
-Trim sequence reads
+Fuse paired reads. Two methods are provided for fusing paired reads. 
+First method works for non overlapping sequence read pairs. Trim to a fixed length (removes low quality bases) and then concatenate forward and reverse read.
 ```R
 # create output subdirectory 
 outProcFiles <- file.path(outputDir, "processedReads")
@@ -131,10 +132,6 @@ lapply(seq_along(refSeq), function(i){
   writeFasta(refSeq[i], file.path(outputDir, paste(names(refSeq)[i], postfix, ".fasta", sep="")))
 })
 
-```
-
-Fuse paired reads either by fixed length
-```R
 # Fuse paired read
 procReads <- bindAmpliconReads(as.character(dePlexMarker$FileR1), as.character(dePlexMarker$FileR2), outProcFiles, 
                          read1Length=numNtF, read2Length=numNtR)
@@ -142,8 +139,14 @@ procReads <- cbind(dePlexMarker[,c("SampleID", "SampleName","BarcodePair", "Mark
 write.table(procReads, file.path(outputDir, sprintf("processedReadSummary%s.txt", postfix)), sep="\t", row.names=F)
 ```
 
-or by merging the overlap of the forward and reverse read (using vsearch wrapper).
+Second method work only for overlapping sequence read pair by merging the overlap of the forward and reverse read (using vsearch wrapper).
 ```R
+refSeq <- DNAStringSet(markerTab$ReferenceSequence)
+names(refSeq) <- markerTab$MarkerID
+lapply(seq_along(refSeq), function(i){
+  writeFasta(refSeq[i], file.path(outputDir, paste(names(refSeq)[i], postfix, ".fasta", sep="")))
+})
+
 procReadsMerge <- mergeAmpliconReads(as.character(dePlexMarker$FileR1), as.character(dePlexMarker$FileR2), outProcFiles)
 procReadsMerge <- cbind(dePlexMarker[,c("SampleID", "SampleName","BarcodePair", "MarkerID")], procReadsMerge)
 write.table(procReadsMerge, file.path(outputDir, sprintf("processedReadSummary%s.txt", "_merge")), sep="\t", row.names=F, quote=F)
@@ -174,7 +177,7 @@ snpLst <- lapply(markerTab$MarkerID, function(marker){
   snpRef <- unlist(lapply(potSNP, function(snp){
     as.character(subseq(refSeq[marker], start=snp, width=1))
   }))
-  snps <- cbind(Chr=marker, Pos=potSNP, Ref=snpRef, Alt="N")
+  snps <- data.frame(Chr=marker, Pos=potSNP, Ref=snpRef, Alt="N", stringsAsFactors=F)
   write.table(snps, file=file.path(outputDir, sprintf("potentialSNPlist_rate%.0f_occ%i_%s%s.txt", 
                                                   minMMrate*100, minOccGen, marker, postfix)), 
               row.names=F, col.names=T, sep="\t", quote=F)
@@ -195,7 +198,7 @@ names(snpLst) <- markerTab$MarkerID
 ```
 
 
-Call Haplotypes (Work in progress.)
+Call Haplotypes
 ```R
 # call haplotype options
 minCov <- 3

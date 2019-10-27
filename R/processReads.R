@@ -30,8 +30,7 @@ demultiplexReads <- function(fastqFileFwd, fastqFileRev, barcodeFileFwd, barcode
   sumDemultiplex <- character(0)
   msg <- paste("Processing file", basename(fastqFileFwd), "and", basename(fastqFileRev), ":")
   progressReport(detail=msg)
-  while(length(sr1 <- yield(f1)) > 0){
-    sr2 <- yield(f2)
+  while(length(sr1 <- yield(f1)) > 0 & length(sr2 <- yield(f2)) > 0){
 
     if (length(sr1) != length(sr2)) {
       warning('Fastq files have unequal lengths, it is likely one is incomplete')
@@ -40,15 +39,12 @@ demultiplexReads <- function(fastqFileFwd, fastqFileRev, barcodeFileFwd, barcode
       else 
         sr1 <- sr1[seq_along(sr2)]
     }
-    
-    if (length(sr1) == 0)
-      break
+
     countReads <- countReads + length(sr1)
     
-    if(is.null(adapterFwd)){
-      sr1_trim <- narrow(sr1, start=1, width=barcodesFwdLength)
-      sr2_trim <- narrow(sr2, start=1, width=barcodesRevLength)
-    }
+    sr1_trim <- narrow(sr1, start=1, width=barcodesFwdLength)
+    sr2_trim <- narrow(sr2, start=1, width=barcodesRevLength)
+    # TODO handling to remove adapter sequence
     
     idxFwd <- Biostrings::match(sread(sr1_trim), barcodesFwd)
     idxRev <- Biostrings::match(sread(sr2_trim), barcodesRev)
@@ -105,7 +101,6 @@ removePrimer <- function(fastqFileR1, fastqFileR2, outputFile, primerFwd, primer
   filteredReads <- 0
   while(length(sr1 <- yield(f1)) > 0){
     sr2 <- yield(f2)
-    stopifnot(length(sr1) == length(sr2))
     totalReads <- totalReads+length(sr1)
     
     index <- which(vcountPattern(primerFwd, sread(sr1), max.mismatch=max.mismatch, with.indels=with.indels) == 1)
@@ -116,7 +111,7 @@ removePrimer <- function(fastqFileR1, fastqFileR2, outputFile, primerFwd, primer
     sr2 <- sr2[index]
     sr1 <- sr1[index]
     
-    if(length(sr1)>1){
+    if(length(sr1)>0){
       fPrimEnd <- vmatchPattern(primerFwd, sread(sr1), max.mismatch=max.mismatch, with.indels=with.indels)
       fPrimEnd <- unlist(endIndex(fPrimEnd))
       sr1_trim <- narrow(sr1, start=fPrimEnd+1, width=NA)
@@ -162,7 +157,7 @@ removePrimer <- function(fastqFileR1, fastqFileR2, outputFile, primerFwd, primer
                       stringsAsFactors=F))
 }
 
-demultiplexByMarker <- function(sampleTable, markerTable, outDir, trimFilenameExt="R1\\.fastq.gz", progressReport=message){
+demultiplexByMarker <- function(sampleTable, markerTable, outputDir, trimFilenameExt="R1\\.fastq.gz", progressReport=message){
   # check args
   stopifnot(
     is.data.frame(sampleTable), nrow(sampleTable) > 0,
@@ -170,7 +165,7 @@ demultiplexByMarker <- function(sampleTable, markerTable, outDir, trimFilenameEx
     all(file.exists(c(sampleTable$FileR1, sampleTable$FileR2))),
     is.data.frame(markerTable), nrow(markerTable) > 0,
     all(c("MarkerID", "Forward", "Reverse") %in% colnames(markerTable)),
-    is.character(outDir), length(outDir) == 1, file.exists(outDir)
+    is.character(outputDir), length(outputDir) == 1, file.exists(outputDir)
   )
   
   resM <- do.call(rbind, lapply(1:dim(markerTable)[1], function(j){
@@ -186,7 +181,7 @@ demultiplexByMarker <- function(sampleTable, markerTable, outDir, trimFilenameEx
     
     # process each file demultiplexed by sample
     res <- do.call(rbind.data.frame, lapply(seq_along(sampleTable$FileR1), function(i){
-      outputFile <- file.path(outDir, sub(trimFilenameExt, mID, basename(as.character(sampleTable$FileR1)[i])))
+      outputFile <- file.path(outputDir, sub(trimFilenameExt, mID, basename(as.character(sampleTable$FileR1)[i])))
       # demultiplex by marker and truncate primer sequence
       removePrimer(as.character(sampleTable$FileR1)[i], as.character(sampleTable$FileR2)[i], outputFile,
                    adapterF, adapterR, max.mismatch=2, with.indels=F)
@@ -217,7 +212,7 @@ mergeAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, mergePrefix=
     args <- paste("--fastq_mergepairs", fastqFileR1[i], "--reverse", fastqFileR2[i],
                   "--fastqout", outputFile, "--fastq_truncqual", 1, "--fastq_maxns", 0)
     Rvsearch:::.vsearchBin(args=args)
-    numRead = length(Biostrings::readDNAStringSet(outputFile, format = 'FASTQ'))
+    numRead <- length(readFastq(fn))
     return(data.frame(numRead=numRead, ReadFile=outputFile, stringsAsFactors=F))
   })
   tab <- do.call(rbind.data.frame, tab)

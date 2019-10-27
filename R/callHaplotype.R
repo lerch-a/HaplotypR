@@ -24,9 +24,9 @@ createContingencyTable <- function(inputFiles, sampleNames, dereplicated=F, inpu
     progressReport(detail=msg, value=i)
     
     # load sequence reads
-    if (inputFormat=="fasta") {
+    if(inputFormat=="fasta"){
       inputReads <- readFasta(inputFiles[i])
-    } else {
+    }else{
       inputReads <- readFastq(inputFiles[i])
     }
     
@@ -144,10 +144,9 @@ callHaplotype <- function(x, detectability=1/100, minHaplotypCoverage=3, minRepl
   return(x)
 }
 
-createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refSeq, snpList, postfix, 
+createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, referenceSequence, snpList, postfix, 
                                      minHaplotypCoverage=3, minReplicate=2, 
-                                     detectability=1/100, minSampleCoverage=300,
-                                     maxDel = 0L, maxIns = 0L){
+                                     detectability=1/100, minSampleCoverage=300){
   # check args
   stopifnot(
     is.character(outputDir), length(outputDir) == 1, file.exists(outputDir),
@@ -159,9 +158,7 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refSeq
     is.numeric(minHaplotypCoverage), length(minHaplotypCoverage) == 1,
     is.numeric(minReplicate), length(minReplicate) == 1,
     is.numeric(detectability), length(detectability) == 1,
-    is.numeric(minSampleCoverage), length(minSampleCoverage) == 1,
-    is.numeric(maxDel), length(maxDel) == 1,
-    is.numeric(maxIns), length(maxIns) == 1
+    is.numeric(minSampleCoverage), length(minSampleCoverage) == 1
   )
   
   devMode <- getOption("HaplotypR.devel")
@@ -174,7 +171,6 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refSeq
     
     outFreqFiles <- file.path(outFreqDir, marker)
     dir.create(outFreqFiles)
-    
     samTab <- sampleTable[sampleTable$MarkerID == marker,]
     snpSet <- as.data.frame(snpList[[marker]], stringsAsFactors = FALSE)
     snpSet$Pos <- as.integer(snpSet$Pos)
@@ -201,8 +197,8 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refSeq
     
     # create an overview table
     overviewHap <- createHaplotypOverviewTable(allHaplotypesFilenames=fnAllSeq, clusterFilenames=clusterFilenames, 
-                                               chimeraFilenames=chimeraFilenames, referenceSequence=refSeq[marker],
-                                               snpSet=snpSet, maxDel = maxDel, maxIns = maxIns)
+                                               chimeraFilenames=chimeraFilenames, referenceSequence=referenceSequence[marker],
+                                               snpSet=snpSet)
     
     ## create final haplotype
     overviewHap$FinalHaplotype <- NA_character_
@@ -216,7 +212,7 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refSeq
     # Cluster identical SNPs pattern
     idx <- overviewHap$FinalHaplotype %in% marker
     snps <- unique(na.omit(overviewHap$snps[idx]))
-    if (length(snps) > 0)
+    if(length(snps) > 0)
       names(snps) <- paste(marker, seq_along(snps), sep="-")
     overviewHap$FinalHaplotype[idx] <- names(snps)[match(overviewHap$snps[idx], snps)]
     overviewHap <- as.data.frame(overviewHap)
@@ -224,12 +220,13 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refSeq
       write.table(overviewHap, file=file.path(outputDir, sprintf("HaplotypeOverviewTable_%s%s.txt", marker, postfix)), sep="\t")
     
     # getHaplotype sequence
-    hapSeq <- lapply(snps, function(sp){
-      replaceLetterAt(refSeq[[marker]], at=snpSet$Pos, letter=sp)
-    })
-    hapSeq <- DNAStringSet(hapSeq)
-    writeFasta(hapSeq, file.path(outputDir, file=sprintf("%s_HaplotypeSeq%s.fasta", marker, postfix)))
-    
+    if(!is.null(referenceSequence)){
+      hapSeq <- lapply(snps, function(sp){
+        replaceLetterAt(referenceSequence[[marker]], at=snpSet$Pos, letter=sp)
+      })
+      hapSeq <- DNAStringSet(hapSeq)
+      writeFasta(hapSeq, file.path(outputDir, file=sprintf("%s_HaplotypeSeq%s.fasta", marker, postfix)))
+    }
     repfile <- clusterFilenames[,"RepresentativeFile"]
     
     hab <- rep(0, dim(overviewHap)[1])
@@ -273,28 +270,30 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refSeq
     
     
     # check replicates
-    # idx <- split(1:dim(haplotypesSample)[2], samTab$SampleID)
-    markerRes <- lapply(seq_len(nrow(samTab)), function(i) {
+    idx <- split(1:dim(haplotypesSample)[2], samTab$SampleID)
+    markerRes <- lapply(idx, function(i){
       reads <- callHaplotype(haplotypesSample[,i, drop=F], minHaplotypCoverage=minHaplotypCoverage, 
-                             minReplicate=minReplicate, detectability=detectability, minSampleCoverage=minSampleCoverage, 
-                             reportBackground=T)
-      
-      tab <- data.frame(SampleID = samTab$SampleID[i],
-                        MarkerID = as.character(samTab$MarkerID[i]),
-                        Haplotype = as.character(rownames(reads)),
-                        Reads = unname(reads),
-                        FlagChimera = FALSE, 
-                        stringsAsFactors = FALSE)
+                           minReplicate=minReplicate, detectability=detectability, minSampleCoverage=minSampleCoverage, 
+                           reportBackground=T)
+      tab <- cbind(samTab[rep(i,each=dim(tab)[1]), c("SampleID","SampleName","MarkerID")], 
+                   Haplotype=rownames(tab), Reads=as.integer(tab), FlagChimera=F)
+      colnames(tab) <- c("SampleID","SampleName","MarkerID","Haplotype","Reads")
+      rownames(tab) <- NULL
       
       #check individual samples for chimera
-      hIdx <- grep(marker, tab$Haplotype)
-      if(length(hIdx)>2) {
-        chim <- flagChimera(tab[hIdx,], overviewHap)
-        tab$FlagChimera <- tab$Haplotype %in% chim
-      }
+      do.call(rbind, lapply(split(tab, tab$SampleID), function(tt){
+        chim <- NULL
+        hIdx <- grep(marker, tt$Haplotype)
+        if(length(hIdx)>2){
+          chim <- flagChimera(tt[hIdx,], overviewHap)
+        }
+        tt$FlagChimera <- tt$Haplotype %in% chim
+        return(tt)
+      }))
       return(tab)
     })
     markerRes <- do.call(rbind.data.frame, markerRes)
+    rownames(markerRes) <- NULL
     markerResFn <- file.path(outputDir, sprintf("finalHaplotypeList_Hcov%.0f_Scov%.0f_occ%i_sens%.4f_%s%s.txt", 
                                                 minHaplotypCoverage, minSampleCoverage, minReplicate, detectability, marker, postfix))
     write.table(markerRes, file=markerResFn, sep="\t", row.names=F, col.names=T)

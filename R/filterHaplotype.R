@@ -37,7 +37,7 @@ checkChimeras <- function(representativesFile, method="vsearch", progressReport=
 
 
 createHaplotypOverviewTable <- function(allHaplotypesFilenames, clusterFilenames, chimeraFilenames, referenceSequence,
-                                        snpSet, maxDel = 0L, maxIns = 0L){
+                                        snpSet){
   
   sr1 <- readFasta(allHaplotypesFilenames)
   overviewHap <- data.frame(HaplotypesName=as.character(id(sr1)))
@@ -118,43 +118,52 @@ createHaplotypOverviewTable <- function(allHaplotypesFilenames, clusterFilenames
   
   ######
   ## singleton $ representativ
+  env <- environment()
   overviewHap$singelton <- T
   overviewHap$representatives <- F
+  env$overviewHap$singelton <- overviewHap$singelton
+  env$overviewHap$representatives <- overviewHap$representatives
   
   repfile <- clusterFilenames[,"RepresentativeFile"]
-  for (fn in repfile){
-    sr1 <- readFasta(fn)
+  haplotypes <- lapply(seq_along(repfile), function(i){
+    sr1 <- readFasta(repfile[i])
     vec <- do.call(rbind, strsplit(as.character(id(sr1)), "_"))
-    at <- match(vec[,1], overviewHap$HaplotypesName)
+    clusterResp <- vec[,1]
     clusterSize <- as.integer(vec[,2])
-  ######
+    env$overviewHap[clusterResp,"representatives"] <- T
+    clusterResp <- clusterResp[clusterSize>1]
+    env$overviewHap[clusterResp,"singelton"] <- F
+    return(NULL)
+  })
+  overviewHap$singelton <- env$overviewHap$singelton
+  overviewHap$representatives <- env$overviewHap$representatives
+  
+  ######		
   # INDEL - Homopolymere
-	if(!is.null(referenceSequence)){
-		idx <- as.character(id(sr1)) %in% as.character(overviewHap$HaplotypesName[!overviewHap$singelton])
-		sr1 <- sr1[idx]
-		aln1 <- pairwiseAlignment(sread(sr1), referenceSequence, type="global")
-		idx <- (lengths(deletion(aln1)) + lengths(insertion(aln1))) == 0
-		names(idx) <- as.character(id(sr1))
-		overviewHap[names(idx),"indels"] <- !idx
-		sr1 <- sr1[idx]
-    overviewHap$representatives[at] <- T
-    overviewHap$singelton[at[clusterSize>1]] <- F
+  overviewHap$indels <- F
+  if(!is.null(referenceSequence)){
+    # TODO uses sr1 read from beginning of function, change variable to better name as sr1 is use also elsewhere
+    idx <- as.character(id(sr1)) %in% as.character(overviewHap$HaplotypesName[!overviewHap$singelton])		
+    sr1 <- sr1[idx]		
+    aln1 <- pairwiseAlignment(sread(sr1), referenceSequence, type="global")		
+    idx <- (lengths(deletion(aln1)) + lengths(insertion(aln1))) == 0		
+    names(idx) <- as.character(id(sr1))		
+    overviewHap[names(idx),"indels"] <- !idx		
+    sr1 <- sr1[idx]		
   }
   
-  ###
   # only SNP variation - Final Haplotypes
-  if(!is.null(snpList)){
-	  snps <- lapply(as.integer(snpList[,"Pos"]), function(n){
+	overviewHap$snps <- NA_character_
+	if(!is.null(snpSet)){
+	  snps <- lapply(as.integer(snpSet[,"Pos"]), function(n){
 	    as.character(subseq(sread(sr1), start=n, width = 1))
 	  })
-	  # snps <- do.call(paste0, snps)
-	  snps <- apply(do.call(cbind, snps), 1, paste, collapse="")
-	  names(snps) <- as.character(id(sr1))
-	  
-	  overviewHap[names(snps),"snps"] <- snps
+  	snps <- apply(do.call(cbind, snps), 1, paste, collapse="")
+  	names(snps) <- as.character(id(sr1))
+  	overviewHap[names(snps),"snps"] <- snps
   }else{
-  	overviewHap[,"snps"] <- ""
+    overviewHap[,"snps"] <- ""
   }
-  
+	
   return(overviewHap)
 }
