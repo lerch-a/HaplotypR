@@ -36,7 +36,8 @@ checkChimeras <- function(representativesFile, method="vsearch", progressReport=
 }
 
 
-createHaplotypOverviewTable <- function(allHaplotypesFilenames, clusterFilenames, chimeraFilenames, referenceSequence=NULL, snpList){
+createHaplotypOverviewTable <- function(allHaplotypesFilenames, clusterFilenames, chimeraFilenames, referenceSequence,
+                                        snpSet, maxDel = 0L, maxIns = 0L){
   
   sr1 <- readFasta(allHaplotypesFilenames)
   overviewHap <- data.frame(HaplotypesName=as.character(id(sr1)))
@@ -54,7 +55,7 @@ createHaplotypOverviewTable <- function(allHaplotypesFilenames, clusterFilenames
   	clusterSize <- as.integer(vec[,2])
   	clusterResp <- clusterResp[clusterSize>1]
   	chimScore <- chimScore[clusterSize>1]
-  	if(length(clusterResp)==0){
+  	if (length(clusterResp)==0){
   		return(list(Chimera=character(0), NonChimera=character(0)))
   	}
   	return(list(Chimera=clusterResp[chimScore>0], NonChimera=clusterResp[chimScore==0]))
@@ -117,30 +118,15 @@ createHaplotypOverviewTable <- function(allHaplotypesFilenames, clusterFilenames
   
   ######
   ## singleton $ representativ
-  env <- environment()
   overviewHap$singelton <- T
   overviewHap$representatives <- F
-  env$overviewHap$singelton <- overviewHap$singelton
-  env$overviewHap$representatives <- overviewHap$representatives
   
   repfile <- clusterFilenames[,"RepresentativeFile"]
-  haplotypes <- lapply(seq_along(repfile), function(i){
-  	sr1 <- readFasta(repfile[i])
-  	vec <- do.call(rbind, strsplit(as.character(id(sr1)), "_"))
-  	clusterResp <- vec[,1]
-  	clusterSize <- as.integer(vec[,2])
-  	env$overviewHap[clusterResp,"representatives"] <- T
-  	clusterResp <- clusterResp[clusterSize>1]
-  	env$overviewHap[clusterResp,"singelton"] <- F
-  	return(NULL)
-  })
-  
-  table(env$overviewHap$singelton)
-  table(env$overviewHap$representatives)
-  overviewHap$singelton <- env$overviewHap$singelton
-  overviewHap$representatives <- env$overviewHap$representatives
-  
-  
+  for (fn in repfile){
+    sr1 <- readFasta(fn)
+    vec <- do.call(rbind, strsplit(as.character(id(sr1)), "_"))
+    at <- match(vec[,1], overviewHap$HaplotypesName)
+    clusterSize <- as.integer(vec[,2])
   ######
   # INDEL - Homopolymere
 	if(!is.null(referenceSequence)){
@@ -151,7 +137,9 @@ createHaplotypOverviewTable <- function(allHaplotypesFilenames, clusterFilenames
 		names(idx) <- as.character(id(sr1))
 		overviewHap[names(idx),"indels"] <- !idx
 		sr1 <- sr1[idx]
-	}
+    overviewHap$representatives[at] <- T
+    overviewHap$singelton[at[clusterSize>1]] <- F
+  }
   
   ###
   # only SNP variation - Final Haplotypes

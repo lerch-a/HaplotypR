@@ -106,7 +106,7 @@ dir.create(outDeplexMarker)
   
 # process each marker
 markerTab <- read.delim(primerFile, stringsAsFactors=F)
-dePlexMarker <- demultiplexByMarker(dePlexSample, markerTab)
+dePlexMarker <- demultiplexByMarker(dePlexSample, markerTab, outDeplexMarker)
 
 # save summary table
 write.table(dePlexMarker, file.path(outputDir, "demultiplexMarkerSummary.txt"), sep="\t", row.names=F)
@@ -204,10 +204,10 @@ minOccHap <- 2
 minCovSample <- 25
 
 # call final haplotypes
-finalTab <- createFinalHaplotypTable(outputDir=outputDir, sampleTable=procReads, 
-                                     snpList=snpLst, postfix=postfix, 
-                                     minHaplotypCoverage=minCov, minReplicate=minOccHap, 
-                                     detectability=detectionLimit, minSampleCoverage=minCovSample)
+finalTab <- createFinalHaplotypTable(
+  outputDir = outputDir, sampleTable = procReads, markerTable = markerTab, refSeq = refSeq,
+  snpList = snpLst, postfix = postfix, minHaplotypCoverage = minCov, minReplicate = minOccHap, 
+  detectability = detectionLimit, minSampleCoverage = minCovSample)
 ```
 
 # Run HaplotypR as Shiny App (currently dysfunctional)
