@@ -273,8 +273,8 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refere
     idx <- split(1:dim(haplotypesSample)[2], samTab$SampleID)
     markerRes <- lapply(idx, function(i){
       reads <- callHaplotype(haplotypesSample[,i, drop=F], minHaplotypCoverage=minHaplotypCoverage, 
-                           minReplicate=minReplicate, detectability=detectability, minSampleCoverage=minSampleCoverage, 
-                           reportBackground=T)
+                             minReplicate=minReplicate, detectability=detectability, minSampleCoverage=minSampleCoverage, 
+                             reportBackground=T)
       tab <- cbind(samTab[rep(i,each=dim(tab)[1]), c("SampleID","SampleName","MarkerID")], 
                    Haplotype=rownames(tab), Reads=as.integer(tab), FlagChimera=F)
       colnames(tab) <- c("SampleID","SampleName","MarkerID","Haplotype","Reads")
