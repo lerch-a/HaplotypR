@@ -207,7 +207,7 @@ mergeAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, mergePrefix=
     msg <- paste("Processing file", basename(fastqFileR1[i]), "and", basename(fastqFileR2[i]), "...")
     progressReport(detail=msg, value=i)
     
-    outputFile <- file.path(outputDir, sub("_F\\.fastq.gz", "", basename(fastqFileR1[i])))
+    outputFile <- file.path(outputDir, sub("_R1.fastq.gz$", "", basename(fastqFileR1[i])))
     outputFile <- paste(outputFile, mergePrefix, ".fastq.gz", sep="")
     args <- paste("--fastq_mergepairs", fastqFileR1[i], "--reverse", fastqFileR2[i],
                   "--fastqout", outputFile, "--fastq_truncqual", 1, "--fastq_maxns", 0)

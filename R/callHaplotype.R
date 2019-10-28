@@ -58,7 +58,7 @@ createContingencyTable <- function(inputFiles, sampleNames, dereplicated=F, inpu
     
     names(haplotypes) <- paste(names(haplotypes), readFreq, sep=freqSplitPattern)
     #freqFilename <- file.path(outputDir, sprintf("%s%s_hapFreq.fa", sampleNames[i], replicatNames[i]))
-    freqFilename <- file.path(outputDir, sub(".fastq.gz","_hapFreq.fa", basename(inputFiles[i])))
+    freqFilename <- file.path(outputDir, sub(".fastq.gz$", "_hapFreq.fa", basename(inputFiles[i])))
     writeFasta(haplotypes, freqFilename)
     return(lst)
   })
