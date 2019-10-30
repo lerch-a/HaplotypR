@@ -58,7 +58,7 @@ createContingencyTable <- function(inputFiles, sampleNames, dereplicated=F, inpu
     
     names(haplotypes) <- paste(names(haplotypes), readFreq, sep=freqSplitPattern)
     #freqFilename <- file.path(outputDir, sprintf("%s%s_hapFreq.fa", sampleNames[i], replicatNames[i]))
-    freqFilename <- file.path(outputDir, sub(".fastq.gz","_hapFreq.fa", basename(inputFiles[i])))
+    freqFilename <- file.path(outputDir, sub(".fastq.gz$", "_hapFreq.fa", basename(inputFiles[i])))
     writeFasta(haplotypes, freqFilename)
     return(lst)
   })
@@ -150,7 +150,7 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refere
   # check args
   stopifnot(
     is.character(outputDir), length(outputDir) == 1, file.exists(outputDir),
-    is.data.frame(sampleTable), all(c("MarkerID", "ReadFile", "SampleID") %in% colnames(sampleTable)),
+    is.data.frame(sampleTable), all(c("MarkerID", "ReadFile", "SampleID", "SampleName") %in% colnames(sampleTable)),
     is.character(sampleTable$ReadFile), all(file.exists(sampleTable$ReadFile)),
     is.data.frame(markerTable), all(c("MarkerID") %in% colnames(markerTable)),
     is.list(snpList), all(sampleTable$MarkerID %in% names(snpList)),
@@ -257,7 +257,6 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refere
       write.table(cbind(HaplotypNames=rownames(haplotypesSample),haplotypesSample), 
                   file=file.path(outputDir, sprintf("reclusteredHaplotypeTable_%s%s.txt", marker, postfix)), sep="\t", row.names=F, col.names=T)
     
-    
     # Apply cut-off haplotype only in 1 sample
     haplotypesSample <- callHaplotype(haplotypesSample, minHaplotypCoverage=minHaplotypCoverage, minReplicate=minReplicate, 
                                       detectability=detectability, minSampleCoverage=1)
@@ -272,9 +271,9 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refere
     # check replicates
     idx <- split(1:dim(haplotypesSample)[2], samTab$SampleID)
     markerRes <- lapply(idx, function(i){
-      reads <- callHaplotype(haplotypesSample[,i, drop=F], minHaplotypCoverage=minHaplotypCoverage, 
-                           minReplicate=minReplicate, detectability=detectability, minSampleCoverage=minSampleCoverage, 
-                           reportBackground=T)
+      tab <- callHaplotype(haplotypesSample[,i, drop=F], minHaplotypCoverage=minHaplotypCoverage, 
+                             minReplicate=minReplicate, detectability=detectability, minSampleCoverage=minSampleCoverage, 
+                             reportBackground=T)
       tab <- cbind(samTab[rep(i,each=dim(tab)[1]), c("SampleID","SampleName","MarkerID")], 
                    Haplotype=rownames(tab), Reads=as.integer(tab), FlagChimera=F)
       colnames(tab) <- c("SampleID","SampleName","MarkerID","Haplotype","Reads")
