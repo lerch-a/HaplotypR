@@ -157,7 +157,7 @@ removePrimer <- function(fastqFileR1, fastqFileR2, outputFile, primerFwd, primer
                       stringsAsFactors=F))
 }
 
-demultiplexByMarker <- function(sampleTable, markerTable, outputDir, trimFilenameExt="R1\\.fastq.gz", progressReport=message){
+demultiplexByMarker <- function(sampleTable, markerTable, outputDir, trimFilenameExt="R1\\.fastq.gz$", progressReport=message){
   # check args
   stopifnot(
     is.data.frame(sampleTable), nrow(sampleTable) > 0,
@@ -193,7 +193,7 @@ demultiplexByMarker <- function(sampleTable, markerTable, outputDir, trimFilenam
   return(resM)
 }
 
-mergeAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, mergePrefix="_merge", progressReport=message){
+mergeAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, mergePrefix="_merge", trimFilenameExt="_F\\.fastq.gz$", progressReport=message){
   
   if(length(fastqFileR1) != length(fastqFileR2))
     stop("Vector length of fastqFileR1 and fastqFileR2 not identical.")
@@ -207,7 +207,7 @@ mergeAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, mergePrefix=
     msg <- paste("Processing file", basename(fastqFileR1[i]), "and", basename(fastqFileR2[i]), "...")
     progressReport(detail=msg, value=i)
     
-    outputFile <- file.path(outputDir, sub("_R1.fastq.gz$", "", basename(fastqFileR1[i])))
+    outputFile <- file.path(outputDir, sub(trimFilenameExt, "", basename(fastqFileR1[i])))
     outputFile <- paste(outputFile, mergePrefix, ".fastq.gz", sep="")
     args <- paste("--fastq_mergepairs", fastqFileR1[i], "--reverse", fastqFileR2[i],
                   "--fastqout", outputFile, "--fastq_truncqual", 1, "--fastq_maxns", 0)
@@ -220,7 +220,7 @@ mergeAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, mergePrefix=
 }
 
 
-bindAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, read1Length=NULL, read2Length=read1Length, mergePrefix="_bind", progressReport=message){
+bindAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, read1Length=NULL, read2Length=read1Length, mergePrefix="_bind", trimFilenameExt="_F\\.fastq.gz$", progressReport=message){
   
   if(length(fastqFileR1) != length(fastqFileR2))
     stop("Vector length of fastqFileR1 and fastqFileR2 not identical.")
@@ -234,7 +234,7 @@ bindAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, read1Length=N
     msg <- paste("Processing file", basename(fastqFileR1[i]), "and", basename(fastqFileR2[i]), "...")
     progressReport(detail=msg, value=i)
     
-    outputFile <- file.path(outputDir, sub("_F\\.fastq.gz", "", basename(fastqFileR1[i])))
+    outputFile <- file.path(outputDir, sub(trimFilenameExt, "", basename(fastqFileR1[i])))
     outputFile <- paste(outputFile, mergePrefix, read1Length, "_", read2Length, ".fastq.gz", sep="")
     
     f1 <- FastqStreamer(fastqFileR1[i])

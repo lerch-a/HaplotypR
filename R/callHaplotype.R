@@ -146,7 +146,7 @@ callHaplotype <- function(x, detectability=1/100, minHaplotypCoverage=3, minRepl
 
 createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, referenceSequence, snpList, postfix, 
                                      minHaplotypCoverage=3, minReplicate=2, 
-                                     detectability=1/100, minSampleCoverage=300){
+                                     detectability=1/100, minSampleCoverage=300) {
   # check args
   stopifnot(
     is.character(outputDir), length(outputDir) == 1, file.exists(outputDir),
@@ -283,7 +283,7 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refere
       do.call(rbind, lapply(split(tab, tab$SampleID), function(tt){
         chim <- NULL
         hIdx <- grep(marker, tt$Haplotype)
-        if(length(hIdx)>2) {
+        if(length(hIdx)>2){
           chim <- flagChimera(tt[hIdx,], overviewHap)
         }
         tt$FlagChimera <- tt$Haplotype %in% chim
