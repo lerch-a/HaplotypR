@@ -146,7 +146,7 @@ callHaplotype <- function(x, detectability=1/100, minHaplotypCoverage=3, minRepl
 
 createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, referenceSequence, snpList, postfix, 
                                      minHaplotypCoverage=3, minReplicate=2, 
-                                     detectability=1/100, minSampleCoverage=300){
+                                     detectability=1/100, minSampleCoverage=300) {
   # check args
   stopifnot(
     is.character(outputDir), length(outputDir) == 1, file.exists(outputDir),
