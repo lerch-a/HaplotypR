@@ -283,7 +283,7 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refere
       do.call(rbind, lapply(split(tab, tab$SampleID), function(tt){
         chim <- NULL
         hIdx <- grep(marker, tt$Haplotype)
-        if(length(hIdx)>2) {
+        if(length(hIdx)>2){
           chim <- flagChimera(tt[hIdx,], overviewHap)
         }
         tt$FlagChimera <- tt$Haplotype %in% chim
