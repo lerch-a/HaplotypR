@@ -58,7 +58,7 @@ if ((!dir.exists(vsearch_dir)) || (!dir.exists(swarm_dir))) {
   # rename vsearch and include src
   invisible(file.rename(list.files(tmpdir, pattern = 'vsearch', full.names = TRUE)[1], vsearch_dir))
   vsearch_src_url <- 'https://github.com/torognes/vsearch/archive/v2.14.1.tar.gz'
-  download.file(url = vsearch_src_url, destfile = file.path(vsearch_dir, basename(vsearch_src_url)), mode = 'wb')
+  # download.file(url = vsearch_src_url, destfile = file.path(vsearch_dir, basename(vsearch_src_url)), mode = 'wb')
   if (grepl('windows', Sys.info()[["sysname"]], ignore.case = TRUE)) {
     dir.create(file.path(vsearch_dir, 'bin'))
     invisible(file.rename(file.path(vsearch_dir, 'vsearch.exe'),
@@ -68,7 +68,7 @@ if ((!dir.exists(vsearch_dir)) || (!dir.exists(swarm_dir))) {
   # rename vsearch and include src
   invisible(file.rename(list.files(tmpdir, pattern = 'swarm', full.names = TRUE)[1], swarm_dir))
   swarm_src_url <- 'https://github.com/torognes/swarm/archive/v3.0.0.tar.gz'
-  download.file(url = swarm_src_url, destfile = file.path(swarm_dir, basename(swarm_src_url)), mode = 'wb')
+  # download.file(url = swarm_src_url, destfile = file.path(swarm_dir, basename(swarm_src_url)), mode = 'wb')
 
   # remove tmpdir
   unlink(tmpdir, recursive = TRUE)
