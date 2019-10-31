@@ -52,7 +52,8 @@ if ((!dir.exists(vsearch_dir)) || (!dir.exists(swarm_dir))) {
   }
 
   # move vsearch install to 'inst/vsearch'
-  dir.create('inst', showWarnings = FALSE)
+  if (!dir.exists('inst'))
+    dir.create('inst', showWarnings = FALSE)
 
   # rename vsearch and include src
   invisible(file.rename(list.files(tmpdir, pattern = 'vsearch', full.names = TRUE)[1], vsearch_dir))
