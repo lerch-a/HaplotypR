@@ -58,6 +58,11 @@ if ((!dir.exists(vsearch_dir)) || (!dir.exists(swarm_dir))) {
   invisible(file.rename(list.files(tmpdir, pattern = 'vsearch', full.names = TRUE)[1], vsearch_dir))
   vsearch_src_url <- 'https://github.com/torognes/vsearch/archive/v2.14.1.tar.gz'
   download.file(url = vsearch_src_url, destfile = file.path(vsearch_dir, basename(vsearch_src_url)))
+  if (grepl('windows', Sys.info()[["sysname"]], ignore.case = TRUE)) {
+    dir.create(file.path(vsearch_dir, 'bin'))
+    invisible(file.rename(file.path(vsearch_dir, 'vsearch.exe'),
+                          file.path(vsearch_dir, 'bin', 'vsearch.exe')))
+  }
 
   # rename vsearch and include src
   invisible(file.rename(list.files(tmpdir, pattern = 'swarm', full.names = TRUE)[1], swarm_dir))
