@@ -5,7 +5,7 @@ clusterReads <- function(freqFile, outputDir, prefixOutputFiles, method="Swarm",
   logfile <- file.path(outputDir, paste(prefixOutputFiles, ".log.txt", sep=""))
   statsfile <- file.path(outputDir, paste(prefixOutputFiles, ".stats.txt", sep=""))
   repfile <- file.path(outputDir, paste(prefixOutputFiles, ".representatives.fasta", sep=""))
-  syscall <- paste("-f -b 3 -w", repfile, "-l", logfile, "-s", statsfile, "-i", structfile, "-o", outfile, freqFile, sep=" ")
+  syscall <- paste("-f -b 3 -w", shQuote(repfile), "-l", shQuote(logfile), "-s", shQuote(statsfile), "-i", shQuote(structfile), "-o", shQuote(outfile), shQuote(freqFile), sep=" ")
   
   # check and set progress report function
   if(!is.function(progressReport))
