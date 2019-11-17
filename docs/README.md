@@ -208,7 +208,7 @@ minCovSample <- 25
 
 # call final haplotypes
 finalTab <- createFinalHaplotypTable(
-  outputDir = outputDir, sampleTable = procReads, markerTable = markerTab, refSeq = refSeq,
+  outputDir = outputDir, sampleTable = procReads, markerTable = markerTab, referenceSeq = refSeq,
   snpList = snpLst, postfix = postfix, minHaplotypCoverage = minCov, minReplicate = minOccHap, 
   detectability = detectionLimit, minSampleCoverage = minCovSample)
 ```
