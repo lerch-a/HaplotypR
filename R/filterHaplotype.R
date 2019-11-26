@@ -18,7 +18,7 @@ checkChimeras <- function(representativesFile, method="vsearch", progressReport=
   borderfile <- sub("_sort.fasta", "_bordchimera.fasta", sortfile)
   resfile <- sub("_sort.fasta", "_chimeraResults.txt", sortfile)
   # vsearch --uchime_denovo R-1_Rep1.representatives_nonchimeras.fasta --nonchimeras R-1_Rep1.representatives_nonchimeras2.fasta
-  syscall <- paste("--uchime_denovo ", sortfile,"--mindiffs", 3, "--minh", 0.2, "--nonchimeras", nonchimerafile, "--chimeras", chimerafile, "--borderline", borderfile, "--uchimeout", resfile, sep=" ")
+  syscall <- paste("--uchime_denovo ", shQuote(sortfile),"--mindiffs", 3, "--minh", 0.2, "--nonchimeras", shQuote(nonchimerafile), "--chimeras", shQuote(chimerafile), "--borderline", shQuote(borderfile), "--uchimeout", shQuote(resfile), sep=" ")
   
   # check and set progress report function
   if(!is.function(progressReport))
