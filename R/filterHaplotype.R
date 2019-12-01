@@ -24,12 +24,12 @@ checkChimeras <- function(representativesFile, method="vsearch", progressReport=
   if(!is.function(progressReport))
     progressReport <- message
   
-  require(Rvsearch)
+  # require(Rvsearch)
   #Rvsearch:::.vsearchBin(args=syscall)
   lapply(seq_along(syscall), function(i){ 
     msg <- paste("Processing file", basename(representativesFile[i]), "...", sep=" ")
     progressReport(detail=msg, value=i)
-    Rvsearch:::.vsearchBin(args=syscall[i])
+    .vsearchBin(args=syscall[i])
   })
   
   return(cbind(NonchimeraFile=nonchimerafile, ChimeraFile=chimerafile, BorderchimeraFile=borderfile, ChimeraResultsFile=resfile))

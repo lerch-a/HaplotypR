@@ -211,7 +211,7 @@ mergeAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, mergePrefix=
     outputFile <- paste(outputFile, mergePrefix, ".fastq.gz", sep="")
     args <- paste("--fastq_mergepairs", shQuote(fastqFileR1[i]), "--reverse", shQuote(fastqFileR2[i]),
                   "--fastqout", shQuote(outputFile), "--fastq_truncqual", 1, "--fastq_maxns", 0)
-    Rvsearch:::.vsearchBin(args=args)
+    .vsearchBin(args=args)
     numRead <- length(readFastq(outputFile))
     return(data.frame(numRead=numRead, ReadFile=outputFile, stringsAsFactors=F))
   })

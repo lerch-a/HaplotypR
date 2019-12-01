@@ -11,11 +11,11 @@ clusterReads <- function(freqFile, outputDir, prefixOutputFiles, method="Swarm",
   if(!is.function(progressReport))
     progressReport <- message
   
-  require(Rswarm)
+  # require(Rswarm)
   lapply(seq_along(syscall), function(i){
     msg <- paste("Processing file", basename(freqFile[i]), "...", sep=" ")
     progressReport(detail=msg, value=i)
-    Rswarm:::.swarmBin(syscall[i])
+    .swarmBin(syscall[i])
   })
   return(cbind(RepresentativeFile=repfile, SwarmFile=outfile, StatisticsFile=statsfile, StructureFile=structfile, LogFile=logfile))
 }
