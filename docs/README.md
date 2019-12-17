@@ -53,6 +53,7 @@ devtools::install_github("lerch-a/HaplotypR")
 
 ```R
 library("HaplotypR")
+library("ShortRead")
 ```
 
 Copy example files to a working directory 'outputDir':
