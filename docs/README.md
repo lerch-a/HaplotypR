@@ -241,5 +241,7 @@ The listed file can be used as example input files in the shiny app. The followi
 
 Run HaplotypR GUI:
 ```R
+install.packages("shiny")
+install.packages("shinyFiles")
 runShinyApp()
 ```
