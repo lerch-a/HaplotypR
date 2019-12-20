@@ -1,3 +1,9 @@
+## Table of contents
+
+- [Installation](##Install HaplotypR)
+- [Run HaplotypR on R command line](##Run HaplotypR on R command line)
+- [Run HaplotypR as Shiny App (currently dysfunctional)](##Run HaplotypR as Shiny App (currently dysfunctional))
+
 
 ## Install HaplotypR
 To install HaplotypR start R and first install ShortRead by typing:
