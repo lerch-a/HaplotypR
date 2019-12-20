@@ -1,4 +1,4 @@
-# Merge sequence read
+# Workflow: Merge by overlapping sequence read
 
 ## Load R libraries
 ```R
