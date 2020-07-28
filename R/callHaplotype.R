@@ -264,7 +264,7 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refere
     if(devMode) 
       write.table(cbind(HaplotypNames=rownames(haplotypesSample), haplotypesSample), 
                   file=file.path(outputDir, sprintf("finalHaplotypeTable_Hcov%.0f_Scov%.0f_occ%i_sens%.4f_%s%s.txt",
-                                                    minCov, minCovSample, minReplicate, detectability, marker, postfix)),
+                                                    minHaplotypCoverage, minSampleCoverage, minReplicate, detectability, marker, postfix)),
                   sep="\t", row.names=F, col.names=T)
     
     
