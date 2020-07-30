@@ -10,7 +10,7 @@ library("ShortRead")
 Copy example files to a working directory 'outputDir':
 ```R
 # Define output directory 
-outputDir <- "~/exampleHaplotypR"  
+outputDir <- "exampleHaplotypR"  
 # Create output directoy
 if(!dir.exists(outputDir))
   dir.create(outputDir, recursive=T)
@@ -19,22 +19,22 @@ if(!dir.exists(outputDir))
 setwd(outputDir)
 
 # Copy example files to output directory
-file.copy(from=system.file(package="HaplotypR", "extdata"), to=outputDir, recursive = T)
+file.copy(from=system.file(package="HaplotypR", "extdata/ex2"), to=outputDir, recursive = T)
 
 # List files example files in output direcoty
-dir(file.path(outputDir, "extdata"))
+dir(file.path(outputDir, "ex2"))
 ```
-The following files should be listed with the last R command: "barcode_Fwd.fasta", "barcode_Rev.fasta", "markerFile.txt", "readsF.fastq.gz", "readsR.fastq.gz", "sampleFile.txt". 
+The following files should be listed with the last R command: "barcode_F.fasta", "barcode_R.fasta", "marker_file.txt", "reads2_F.fastq.gz", "reads2_R.fastq.gz", "sample_file.txt". 
 
 ## Demultiplex sequence reads by sample
 Run demultiplexing by sample and rename output files
 ```R
 # set input file path
-primerFile <- "extdata/markerFile.txt"
-sampleFile <- "extdata/sampleFile.txt"
-fnBarcodeF <- "extdata/barcode_Fwd.fasta"
-fnBarcodeR <- "extdata/barcode_Rev.fasta"
-reads <- list.files("extdata", pattern="reads", full.names = T)
+primerFile <- "ex2/marker_file.txt"
+sampleFile <- "ex2/sample_file.txt"
+fnBarcodeF <- "ex2/barcode_F.fasta"
+fnBarcodeR <- "ex2/barcode_R.fasta"
+reads <- list.files("ex2", pattern="reads", full.names = T)
 
 # create output subdirectory 
 outDeplexSample <- file.path(outputDir, "dePlexSample")
@@ -69,15 +69,19 @@ write.table(dePlexMarker, file.path(outputDir, "demultiplexMarkerSummary.txt"), 
 ## Merge by overlapping paired sequence read
 Fuse paired reads. Method work only for overlapping sequence read pair by merging the overlap of the forward and reverse read (using vsearch wrapper).
 ```R
+outProcFiles <- file.path(outputDir, "processedReads")
+dir.create(outProcFiles)
+
+postfix <- "_merge"
 refSeq <- DNAStringSet(markerTab$ReferenceSequence)
 names(refSeq) <- markerTab$MarkerID
 lapply(seq_along(refSeq), function(i){
   writeFasta(refSeq[i], file.path(outputDir, paste(names(refSeq)[i], postfix, ".fasta", sep="")))
 })
 
-procReadsMerge <- mergeAmpliconReads(as.character(dePlexMarker$FileR1), as.character(dePlexMarker$FileR2), outProcFiles)
-procReadsMerge <- cbind(dePlexMarker[,c("SampleID", "SampleName","BarcodePair", "MarkerID")], procReadsMerge)
-write.table(procReadsMerge, file.path(outputDir, sprintf("processedReadSummary%s.txt", "_merge")), sep="\t", row.names=F, quote=F)
+procReads <- mergeAmpliconReads(as.character(dePlexMarker$FileR1), as.character(dePlexMarker$FileR2), outProcFiles)
+procReads <- cbind(dePlexMarker[,c("SampleID", "SampleName","BarcodePair", "MarkerID")], procReads)
+write.table(procReads, file.path(outputDir, sprintf("processedReadSummary%s.txt", postfix)), sep="\t", row.names=F, quote=F)
 ```
 
 ## Call SNPs
