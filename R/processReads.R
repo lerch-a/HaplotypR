@@ -187,9 +187,11 @@ demultiplexByMarker <- function(sampleTable, markerTable, outputDir, trimFilenam
                    adapterF, adapterR, max.mismatch=2, with.indels=F)
       
     }))
-    cbind.data.frame(BarcodePair=as.character(sampleTable$BarcodePair), MarkerID=mID, res, stringsAsFactors=F)
+    cbind.data.frame(SampleID = as.character(sampleTable$SampleID),
+                     BarcodePair = as.character(sampleTable$BarcodePair), 
+                     MarkerID = mID, res, stringsAsFactors = F)
   }))
-  resM <- merge.data.frame(sampleTable[,c("SampleID", "SampleName", "BarcodePair")], resM, by="BarcodePair")
+  resM <- merge.data.frame(sampleTable[,c("SampleID", "SampleName", "BarcodePair")], resM, by=c("SampleID","BarcodePair"))
   return(resM)
 }
 
