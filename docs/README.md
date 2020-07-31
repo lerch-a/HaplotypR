@@ -59,7 +59,7 @@ library("ShortRead")
 Copy example files to a working directory 'outputDir':
 ```R
 # Define output directory 
-outputDir <- "~/exampleHaplotypR"  
+outputDir <- "exampleHaplotypR"  
 # Create output directoy
 if(!dir.exists(outputDir))
   dir.create(outputDir, recursive=T)
