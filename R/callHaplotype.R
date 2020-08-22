@@ -153,7 +153,7 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refere
     is.data.frame(sampleTable), all(c("MarkerID", "ReadFile", "SampleID", "SampleName") %in% colnames(sampleTable)),
     is.character(sampleTable$ReadFile), all(file.exists(sampleTable$ReadFile)),
     is.data.frame(markerTable), all(c("MarkerID") %in% colnames(markerTable)),
-    is.list(snpList), all(sampleTable$MarkerID %in% names(snpList)),
+    is.null(snpList) | is.list(snpList),
     is.character(postfix), length(postfix) == 1,
     is.numeric(minHaplotypCoverage), length(minHaplotypCoverage) == 1,
     is.numeric(minReplicate), length(minReplicate) == 1,
@@ -172,9 +172,11 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refere
     outFreqFiles <- file.path(outFreqDir, marker)
     dir.create(outFreqFiles)
     samTab <- sampleTable[sampleTable$MarkerID == marker,]
-    snpSet <- as.data.frame(snpList[[marker]], stringsAsFactors = FALSE)
-    snpSet$Pos <- as.integer(snpSet$Pos)
-    snpSet$Alt <- NULL
+    if(marker %in% names(snpList)){
+      snpSet <- as.data.frame(snpList[[marker]], stringsAsFactors = FALSE)
+      snpSet$Pos <- as.integer(snpSet$Pos)
+      snpSet$Alt <- NULL      
+    }else{ snpSet <- NULL }
     prefix <- sub(".fastq.gz$", "", basename(as.character(samTab$ReadFile)))
     
     
