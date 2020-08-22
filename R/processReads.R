@@ -195,7 +195,7 @@ demultiplexByMarker <- function(sampleTable, markerTable, outputDir, trimFilenam
   return(resM)
 }
 
-mergeAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, mergePrefix="_merge", trimFilenameExt="_F\\.fastq.gz$", progressReport=message){
+mergeAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, method=c("vsearch","NGmerge"), mergePrefix="_merge", trimFilenameExt="_F\\.fastq.gz$", progressReport=message){
   
   if(length(fastqFileR1) != length(fastqFileR2))
     stop("Vector length of fastqFileR1 and fastqFileR2 not identical.")
@@ -211,9 +211,20 @@ mergeAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, mergePrefix=
     
     outputFile <- file.path(outputDir, sub(trimFilenameExt, "", basename(fastqFileR1[i])))
     outputFile <- paste(outputFile, mergePrefix, ".fastq.gz", sep="")
-    args <- paste("--fastq_mergepairs", shQuote(fastqFileR1[i]), "--reverse", shQuote(fastqFileR2[i]),
-                  "--fastqout", shQuote(outputFile), "--fastq_truncqual", 1, "--fastq_maxns", 0)
-    Rvsearch:::.vsearchBin(args=args)
+    
+    if(method=="vsearch"){
+      args <- paste("--fastq_mergepairs", shQuote(fastqFileR1[i]), "--reverse", shQuote(fastqFileR2[i]),
+                    "--fastqout", shQuote(outputFile), "--fastq_truncqual", 1, "--fastq_maxns", 0, "--fastq_allowmergestagger")
+      Rvsearch:::.vsearchBin(args=args)
+    }else if(method=="NGmerge"){
+      require("NGmergeR")
+      args <- paste(" -d -v -1", shQuote(fastqFileR1[i]), "-2", shQuote(fastqFileR2[i]), "-o", shQuote(outputFile))
+                    #    -f _NonNGmerge -l _NGmerge_log.txt
+      NGmergeR:::.NGmergeBin(args=args)            
+    }else{
+      stop(paste("Merge", method, "method not implemented."))
+    }
+
     numRead <- length(readFastq(outputFile))
     return(data.frame(numRead=numRead, ReadFile=outputFile, stringsAsFactors=F))
   })
