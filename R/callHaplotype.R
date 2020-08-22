@@ -177,6 +177,7 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refere
       snpSet$Pos <- as.integer(snpSet$Pos)
       snpSet$Alt <- NULL      
     }else{ snpSet <- NULL }
+    
     prefix <- sub(".fastq.gz$", "", basename(as.character(samTab$ReadFile)))
     
     
@@ -214,15 +215,19 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refere
     # Cluster identical SNPs pattern
     idx <- overviewHap$FinalHaplotype %in% marker
     snps <- unique(na.omit(overviewHap$snps[idx]))
-    if(length(snps) > 0)
+    if(snps==""){
+      hapNames <- paste(marker, 1:sum(idx), sep="-")
+      overviewHap$FinalHaplotype[idx] <- paste(marker, 1:sum(idx), sep="-")
+    }else if(length(snps) > 0){
       names(snps) <- paste(marker, seq_along(snps), sep="-")
-    overviewHap$FinalHaplotype[idx] <- names(snps)[match(overviewHap$snps[idx], snps)]
+      overviewHap$FinalHaplotype[idx] <- names(snps)[match(overviewHap$snps[idx], snps)]
+    }
     overviewHap <- as.data.frame(overviewHap)
     if(devMode)
       write.table(overviewHap, file=file.path(outputDir, sprintf("HaplotypeOverviewTable_%s%s.txt", marker, postfix)), sep="\t")
     
     # getHaplotype sequence
-    if(!is.null(referenceSequence)){
+    if(!is.null(referenceSequence[marker])){
       hapSeq <- lapply(snps, function(sp){
         replaceLetterAt(referenceSequence[[marker]], at=snpSet$Pos, letter=sp)
       })
