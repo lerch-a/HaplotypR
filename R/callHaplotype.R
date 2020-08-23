@@ -233,6 +233,15 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refere
       })
       hapSeq <- DNAStringSet(hapSeq)
       writeFasta(hapSeq, file.path(outputDir, file=sprintf("%s_HaplotypeSeq%s.fasta", marker, postfix)))
+    } else {
+      idx <- grep(marker, overviewHap$FinalHaplotype)
+      browser()
+      hapSeq <- readFasta(file.path(outputDir, "frequencyFiles", marker, file=sprintf("allSequences_%s_%s.fasta", marker, postfix)))
+      hapSeq <- hapSeq[id(hapSeq) %in% overviewHap$HaplotypesName[idx]]
+      hapSeq <- sread(hapSeq)
+      names(hapSeq)  <- overviewHap$FinalHaplotype[idx]
+      writeFasta(hapSeq, file.path(outputDir, file=sprintf("%s_HaplotypeSeq%s.fasta", marker, postfix)))
+      
     }
     repfile <- clusterFilenames[,"RepresentativeFile"]
     
