@@ -13,6 +13,8 @@ HaplotypR is distributed under the GNU General Public License, version 3.
 
 # Installation
 
+For Docker image go to https://github.com/colbyford/HaplotypR-Docker.
+
 To install HaplotypR start R and first install ShortRead by typing:
 
 ```R
