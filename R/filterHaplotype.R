@@ -154,15 +154,15 @@ createHaplotypOverviewTable <- function(allHaplotypesFilenames, clusterFilenames
 
   # only SNP variation - Final Haplotypes
 	overviewHap$snps <- NA_character_
-	if(!is.null(snpSet)){
+	if(length(sr1)==0 | is.null(snpSet)){
+	  overviewHap[,"snps"] <- ""
+	} else {
 	  snps <- lapply(as.integer(snpSet[,"Pos"]), function(n){
 	    as.character(subseq(sread(sr1), start=n, width = 1))
 	  })
   	snps <- apply(do.call(cbind, snps), 1, paste, collapse="")
   	names(snps) <- as.character(id(sr1))
   	overviewHap[names(snps),"snps"] <- snps
-  }else{
-    overviewHap[,"snps"] <- ""
   }
 	
   return(overviewHap)
