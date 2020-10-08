@@ -101,4 +101,59 @@ flagChimera <- function(hapTable, overviewHap){
 }
 
 
+getReferenceSequence<- function(genome, forwardPrimer, reversePrimer){
+  refSeq <- apply(cbind(Forward=forwardPrimer, Reverse=reversePrimer), 1, function(rr){
+    Fprobe <- rr["Forward"]
+    Rprobe <- rr["Reverse"]
+    # find amplicon
+    lstViews <- lapply(genome, function(sub){
+      matchProbePair(as.character(Fprobe), as.character(Rprobe), sub, verbose=F) # 1 "theoretical amplicon"
+    })
+    lstViews <- lstViews[lengths(lstViews)>0]
+    stopifnot(length(lstViews)==1) # check if single match
+    seq <- unlist(lapply(lstViews, function(vw){ 
+      toString(vw)
+    }))
+    # check strand
+    if(substr(seq, 1, nchar(as.character(Fprobe))) != as.character(Fprobe))
+      seq <- toString(reverseComplement(DNAString(seq)))
+    # remove primer sequence
+    seq <- subseq(seq, nchar(as.character(Fprobe))+1, width(seq))
+    seq <- subseq(seq, 1, width(seq)-nchar(as.character(Rprobe)))
+    return(seq)
+  })
+}
 
+getReferenceLocation <- function(genome, forwardPrimer, reversePrimer, includPrimer=F){
+  names(genome) <- do.call(rbind, strsplit(names(genome)," "))[,1]
+  refLocation <- apply(cbind(Forward=forwardPrimer, Reverse=reversePrimer), 1, function(rr){
+    Fprobe <- rr["Forward"]
+    Rprobe <- rr["Reverse"]
+    # find amplicon
+    lstViews <- lapply(genome, function(sub){
+      matchProbePair(as.character(Fprobe), as.character(Rprobe), sub, verbose=F) # 1 "theoretical amplicon"
+    })
+    lstViews <- lstViews[lengths(lstViews)>0]
+    if(length(lstViews)!=1) # check if single match
+      return("")
+    seq <- toString(lstViews[[1]])
+    # check strand
+    isFwdStrand <- substr(seq, 1, nchar(as.character(Fprobe))) == as.character(Fprobe)
+    gr <- GRanges(seqnames=names(lstViews)[1], ranges=ranges(lstViews[[1]]), strand = ifelse(isFwdStrand,"+","-"))
+    # # remove primer sequence
+    if(!includPrimer){
+      if(isFwdStrand){
+        # seq <- subseq(seq, nchar(as.character(Fprobe))+1, width(seq))
+        start(gr) <- start(gr) + nchar(as.character(Fprobe))
+        end(gr) <- end(gr) - nchar(as.character(Rprobe))
+        subseq(genome[seqnames(gr)], start(gr), end(gr))
+      }else{
+        start(gr) <- start(gr) + nchar(as.character(Rprobe))
+        end(gr) <- end(gr) - nchar(as.character(Fprobe))
+        subseq(genome[seqnames(gr)], start(gr), end(gr))
+      }
+    }
+    return(gr)
+  })
+  return(unlist(as(refLocation,"GRangesList")))
+}
