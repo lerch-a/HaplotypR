@@ -157,7 +157,7 @@ removePrimer <- function(fastqFileR1, fastqFileR2, outputFile, primerFwd, primer
                       stringsAsFactors=F))
 }
 
-demultiplexByMarker <- function(sampleTable, markerTable, outputDir, trimFilenameExt="R1\\.fastq.gz$", progressReport=message){
+demultiplexByMarker <- function(sampleTable, markerTable, outputDir, trimFilenameExt="R1\\.fastq.gz$", progressReport=message, ...){
   # check args
   stopifnot(
     is.data.frame(sampleTable), nrow(sampleTable) > 0,
@@ -184,7 +184,7 @@ demultiplexByMarker <- function(sampleTable, markerTable, outputDir, trimFilenam
       outputFile <- file.path(outputDir, sub(trimFilenameExt, mID, basename(as.character(sampleTable$FileR1)[i])))
       # demultiplex by marker and truncate primer sequence
       removePrimer(as.character(sampleTable$FileR1)[i], as.character(sampleTable$FileR2)[i], outputFile,
-                   adapterF, adapterR, max.mismatch=2, with.indels=F)
+                   adapterF, adapterR, with.indels=F, ...)
       
     }))
     cbind.data.frame(SampleID = as.character(sampleTable$SampleID),
@@ -218,7 +218,7 @@ mergeAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, method=c("vs
       Rvsearch:::.vsearchBin(args=args)
     }else if(method=="NGmerge"){
       require("NGmergeR")
-      args <- paste(" -d -v -1", shQuote(fastqFileR1[i]), "-2", shQuote(fastqFileR2[i]), "-o", shQuote(outputFile))
+      args <- paste(" -d -v -z -1", shQuote(fastqFileR1[i]), "-2", shQuote(fastqFileR2[i]), "-o", shQuote(outputFile))
                     #    -f _NonNGmerge -l _NGmerge_log.txt
       NGmergeR:::.NGmergeBin(args=args)            
     }else{
