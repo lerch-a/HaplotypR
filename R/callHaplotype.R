@@ -172,11 +172,13 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refere
     outFreqFiles <- file.path(outFreqDir, marker)
     dir.create(outFreqFiles)
     samTab <- sampleTable[sampleTable$MarkerID == marker,]
-    if(marker %in% names(snpList)){
+    if(marker %in% names(snpList) & !is.null(snpList[[marker]])){
       snpSet <- as.data.frame(snpList[[marker]], stringsAsFactors = FALSE)
       snpSet$Pos <- as.integer(snpSet$Pos)
       snpSet$Alt <- NULL      
-    }else{ snpSet <- NULL }
+    }else{ 
+      snpSet <- NULL 
+    }
     
     prefix <- sub(".fastq.gz$", "", basename(as.character(samTab$ReadFile)))
     
@@ -240,7 +242,6 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refere
       hapSeq <- sread(hapSeq)
       names(hapSeq)  <- overviewHap$FinalHaplotype[idx]
       writeFasta(hapSeq, file.path(outputDir, file=sprintf("%s_HaplotypeSeq%s.fasta", marker, postfix)))
-      
     }
     repfile <- clusterFilenames[,"RepresentativeFile"]
     
