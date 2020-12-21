@@ -210,6 +210,9 @@ detectionLimit <- 1/100
 minOccHap <- 2
 minCovSample <- 25
 
+# remove samples without reads
+procReads <- procReads[procReads$numRead>0,]
+
 # call final haplotypes
 finalTab <- createFinalHaplotypTable(
   outputDir = outputDir, sampleTable = procReads, markerTable = markerTab, referenceSeq = refSeq,
