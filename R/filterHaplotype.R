@@ -149,11 +149,14 @@ createHaplotypOverviewTable <- function(allHaplotypesFilenames, clusterFilenames
     idx <- (lengths(deletion(aln1)) + lengths(insertion(aln1))) == 0		
     names(idx) <- as.character(id(sr1))		
     overviewHap[names(idx),"indels"] <- !idx		
+    sr1 <- sr1[idx]	
+    # remove haplotyps with wrong size (indels at beginning or end of read)
+    idx <- width(sread(sr1))==width(referenceSequence)
     sr1 <- sr1[idx]		
   }
 
   # only SNP variation - Final Haplotypes
-	overviewHap$snps <- NA_character_
+  overviewHap$snps <- NA_character_
 	if(length(sr1)==0 | is.null(snpSet)){
 	  overviewHap[,"snps"] <- ""
 	} else {
@@ -163,7 +166,7 @@ createHaplotypOverviewTable <- function(allHaplotypesFilenames, clusterFilenames
   	snps <- apply(do.call(cbind, snps), 1, paste, collapse="")
   	names(snps) <- as.character(id(sr1))
   	overviewHap[names(snps),"snps"] <- snps
-  }
-	
+	}
+
   return(overviewHap)
 }
