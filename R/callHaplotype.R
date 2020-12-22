@@ -217,7 +217,7 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refere
     # Cluster identical SNPs pattern
     idx <- overviewHap$FinalHaplotype %in% marker
     snps <- unique(na.omit(overviewHap$snps[idx]))
-    if(snps==""){
+    if(any(snps=="")){
       hapNames <- paste(marker, 1:sum(idx), sep="-")
       overviewHap$FinalHaplotype[idx] <- paste(marker, 1:sum(idx), sep="-")
     }else if(length(snps) > 0){
