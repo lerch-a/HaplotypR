@@ -155,6 +155,9 @@ procReadsMerge <- mergeAmpliconReads(as.character(dePlexMarker$FileR1), as.chara
 procReads <- cbind(dePlexMarker[,c("SampleID", "SampleName","BarcodePair", "MarkerID")], procReadsMerge)
 write.table(procReads, file.path(outputDir, sprintf("processedReadSummary%s.txt", postfix)), sep="\t", row.names=F, quote=F)
 
+# subset: remove markers without reads 
+procReads <- procReads[procReads$numRead>10,]
+
 ```
 
 Calculate mismatch rate and call SNPs
