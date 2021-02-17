@@ -146,7 +146,8 @@ callHaplotype <- function(x, detectability=1/100, minHaplotypCoverage=3, minRepl
 
 createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, referenceSequence, snpList, postfix, 
                                      minHaplotypCoverage=3, minReplicate=2, 
-                                     detectability=1/100, minSampleCoverage=300){
+                                     detectability=1/100, minSampleCoverage=300,
+                                     filterIndel=T){
   # check args
   stopifnot(
     is.character(outputDir), length(outputDir) == 1, file.exists(outputDir),
@@ -203,7 +204,7 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refere
     # create an overview table
     overviewHap <- createHaplotypOverviewTable(allHaplotypesFilenames=fnAllSeq, clusterFilenames=clusterFilenames, 
                                                chimeraFilenames=chimeraFilenames, referenceSequence=referenceSequence[marker],
-                                               snpSet=snpSet)
+                                               snpSet=snpSet, filterIndel=filterIndel)
     
     ## create final haplotype
     overviewHap$FinalHaplotype <- NA_character_
@@ -229,7 +230,7 @@ createFinalHaplotypTable <- function(outputDir, sampleTable, markerTable, refere
       write.table(overviewHap, file=file.path(outputDir, sprintf("HaplotypeOverviewTable_%s%s.txt", marker, postfix)), sep="\t")
     
     # getHaplotype sequence
-    if(!is.null(referenceSequence[marker])){
+    if(!is.null(referenceSequence[marker]) & filterIndel){
       hapSeq <- lapply(snps, function(sp){
         replaceLetterAt(referenceSequence[[marker]], at=snpSet$Pos, letter=sp)
       })

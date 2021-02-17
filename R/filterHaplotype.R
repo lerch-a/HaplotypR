@@ -37,7 +37,7 @@ checkChimeras <- function(representativesFile, method="vsearch", progressReport=
 
 
 createHaplotypOverviewTable <- function(allHaplotypesFilenames, clusterFilenames, chimeraFilenames, referenceSequence,
-                                        snpSet){
+                                        snpSet, filterIndel=T){
   
   sr1 <- readFasta(allHaplotypesFilenames)
   overviewHap <- data.frame(HaplotypesName=as.character(id(sr1)))
@@ -141,7 +141,7 @@ createHaplotypOverviewTable <- function(allHaplotypesFilenames, clusterFilenames
   ######		
   # INDEL - Homopolymere
   overviewHap$indels <- F
-  if(!is.null(referenceSequence)){
+  if(filterIndel & !is.null(referenceSequence)){
     # TODO uses sr1 read from beginning of function, change variable to better name as sr1 is use also elsewhere
     idx <- as.character(id(sr1)) %in% as.character(overviewHap$HaplotypesName[!overviewHap$singelton])		
     sr1 <- sr1[idx]		
@@ -150,13 +150,18 @@ createHaplotypOverviewTable <- function(allHaplotypesFilenames, clusterFilenames
     names(idx) <- as.character(id(sr1))		
     overviewHap[names(idx),"indels"] <- !idx		
     sr1 <- sr1[idx]	
-    # remove haplotyps with wrong size (indels at beginning or end of read)
+  }
+  
+  # remove haplotypes with wrong size (indels at beginning or end of read)
+  if(!is.null(referenceSequence)){
     idx <- width(sread(sr1))==width(referenceSequence)
+    names(idx) <- as.character(id(sr1))	
+    overviewHap[names(idx),"indels"] <- !idx	
     sr1 <- sr1[idx]		
   }
 
   # only SNP variation - Final Haplotypes
-  overviewHap$snps <- NA_character_
+	overviewHap$snps <- NA_character_
 	if(length(sr1)==0 | is.null(snpSet)){
 	  overviewHap[,"snps"] <- ""
 	} else {
@@ -167,6 +172,6 @@ createHaplotypOverviewTable <- function(allHaplotypesFilenames, clusterFilenames
   	names(snps) <- as.character(id(sr1))
   	overviewHap[names(snps),"snps"] <- snps
 	}
-
+	
   return(overviewHap)
 }
