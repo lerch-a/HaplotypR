@@ -65,15 +65,12 @@ outputDir <- "exampleHaplotypR"
 # Create output directoy
 if(!dir.exists(outputDir))
   dir.create(outputDir, recursive=T)
-  
-# Set working directory to output directory
-setwd(outputDir)
 
 # Copy example files to output directory
-file.copy(from=system.file(package="HaplotypR", "extdata"), to=outputDir, recursive = T)
+file.copy(from=system.file(package="HaplotypR", "extdata"), to=".", recursive = T)
 
 # List files example files in output direcoty
-dir(file.path(outputDir, "extdata"))
+dir(file.path("extdata"))
 ```
 The following files should be listed with the last R command: "barcode_Fwd.fasta", "barcode_Rev.fasta", "markerFile.txt", "readsF.fastq.gz", "readsR.fastq.gz", "sampleFile.txt". 
 
