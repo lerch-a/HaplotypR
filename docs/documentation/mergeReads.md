@@ -14,12 +14,9 @@ outputDir <- "exampleHaplotypR"
 # Create output directoy
 if(!dir.exists(outputDir))
   dir.create(outputDir, recursive=T)
-  
-# Set working directory to output directory
-setwd(outputDir)
 
 # Copy example files to output directory
-file.copy(from=system.file(package="HaplotypR", "extdata/ex2"), to=outputDir, recursive = T)
+file.copy(from=system.file(package="HaplotypR", "extdata/ex2"), to=".", recursive = T)
 
 # List files example files in output direcoty
 dir(file.path(outputDir, "ex2"))
