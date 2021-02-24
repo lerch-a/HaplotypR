@@ -66,6 +66,9 @@ write.table(dePlexMarker, file.path(outputDir, "demultiplexMarkerSummary.txt"), 
 ## Merge by overlapping paired sequence read
 Fuse paired reads. Method work only for overlapping sequence read pair by merging the overlap of the forward and reverse read (using vsearch wrapper).
 ```R
+# subset: remove samples without reads 
+dePlexMarker <- dePlexMarker[!is.na(dePlexMarker$FileR1),]
+
 outProcFiles <- file.path(outputDir, "processedReads")
 dir.create(outProcFiles)
 
@@ -79,6 +82,10 @@ lapply(seq_along(refSeq), function(i){
 procReads <- mergeAmpliconReads(as.character(dePlexMarker$FileR1), as.character(dePlexMarker$FileR2), outProcFiles)
 procReads <- cbind(dePlexMarker[,c("SampleID", "SampleName","BarcodePair", "MarkerID")], procReads)
 write.table(procReads, file.path(outputDir, sprintf("processedReadSummary%s.txt", postfix)), sep="\t", row.names=F, quote=F)
+
+# subset: remove samples without reads 
+procReads <- procReads[procReads$numRead>0,]
+
 ```
 
 ## Call SNPs
