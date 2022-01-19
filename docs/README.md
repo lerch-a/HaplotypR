@@ -13,7 +13,9 @@ HaplotypR is distributed under the GNU General Public License, version 3.
 
 # Installation
 
-For Docker image go to https://github.com/colbyford/HaplotypR-Docker.
+Note:
+* For Docker image go to https://github.com/colbyford/HaplotypR-Docker.
+* For Windows computer: install the precomplied Rvsearch package from https://github.com/lerch-a/Rvsearch/releases) and Rswarm package from https://github.com/lerch-a/Rswarm/releases with install.packages("PathToPackage/Rvsearch_0.99.1-win_R-v3.6.zip", repos = NULL).
 
 To install HaplotypR start R and first install ShortRead by typing:
 
