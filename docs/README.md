@@ -32,7 +32,7 @@ install.packages("devtools")
 install.packages("git2r")
 ```
 
-and install Rswarm, Rvsearch and HaplotypR by typing
+and install Rswarm, Rvsearch, (NGmergeR) and HaplotypR by typing
 
 ```R
 library(devtools)
@@ -47,6 +47,12 @@ path <- file.path(tempfile(pattern="Rvsearch-"), "Rvsearch")
 dir.create(path, recursive=TRUE)
 repo <- clone("https://github.com/lerch-a/Rvsearch.git", path)
 clone("https://github.com/torognes/vsearch.git", file.path(path, "src", "vsearch"))
+install(path)
+
+path <- file.path(tempfile(pattern="NGmergeR-"), "NGmergeR")
+dir.create(path, recursive=TRUE)
+repo <- clone("https://github.com/lerch-a/NGmergeR.git", path)
+clone("https://github.com/jsh58/NGmerge", file.path(path, "src", "NGmerge"))
 install(path)
 
 detach("package:HaplotypR", unload=TRUE)
