@@ -114,23 +114,18 @@ removePrimer <- function(fastqFileR1, fastqFileR2, outputFile, primerFwd, primer
     if(length(sr1)>0){
       fPrimEnd <- vmatchPattern(primerFwd, sread(sr1), max.mismatch=max.mismatch, with.indels=with.indels)
       fPrimEnd <- unlist(endIndex(fPrimEnd))
-      sr1_trim <- narrow(sr1, start=fPrimEnd+1, width=NA)
-      start <- fPrimEnd-nchar(primerFwd)+1
-      sr1_prim <- narrow(sr1, start=ifelse(start<1, 1, start), end=fPrimEnd)
-      
       rPrimEnd <- vmatchPattern(primerRev, sread(sr2), max.mismatch=max.mismatch, with.indels=with.indels)
       rPrimEnd <- unlist(endIndex(rPrimEnd))
-      sr2_trim <- narrow(sr2, start=rPrimEnd+1, width=NA)
-      start <-rPrimEnd-nchar(primerRev)+1
-      sr2_prim <- narrow(sr2, start=ifelse(start<1, 1, start), end=rPrimEnd)
-      
       # ensure no zero length reads present
-      index <- which((width(sr1_trim) > 0) & (width(sr2_trim) > 0))
-      sr1_trim <- sr1_trim[index]
-      sr2_trim <- sr2_trim[index]
-      sr1_prim <- sr1_prim[index]
-      sr2_prim <- sr2_prim[index]
-      
+      index <- which((width(sr1)-fPrimEnd>0) & (width(sr2)-rPrimEnd>0))
+      # trim reads
+      sr1_trim <- narrow(sr1[index], start=fPrimEnd+1, width=NA)
+      start <- fPrimEnd-nchar(primerFwd)+1
+      sr1_prim <- narrow(sr1[index], start=ifelse(start<1, 1, start), end=fPrimEnd)
+      sr2_trim <- narrow(sr2[index], start=rPrimEnd+1, width=NA)
+      start <-rPrimEnd-nchar(primerRev)+1
+      sr2_prim <- narrow(sr2[index], start=ifelse(start<1, 1, start), end=rPrimEnd)
+      # write reads
       if(outputPrimerSequence){
         writeFastq(sr1_prim,
                    file=paste(outputFile, "_primerF.fastq.gz", sep=""), mode=mode, compress=T)
