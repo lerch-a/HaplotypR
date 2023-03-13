@@ -118,13 +118,17 @@ removePrimer <- function(fastqFileR1, fastqFileR2, outputFile, primerFwd, primer
       rPrimEnd <- unlist(endIndex(rPrimEnd))
       # ensure no zero length reads present
       index <- which((width(sr1)-fPrimEnd>0) & (width(sr2)-rPrimEnd>0))
+      sr1 <- sr1[index]
+      sr2 <- sr2[index]
+      fPrimEnd <- fPrimEnd[index]
+      rPrimEnd <- rPrimEnd[index]
       # trim reads
-      sr1_trim <- narrow(sr1[index], start=fPrimEnd+1, width=NA)
+      sr1_trim <- narrow(sr1, start=fPrimEnd+1, width=NA)
       start <- fPrimEnd-nchar(primerFwd)+1
-      sr1_prim <- narrow(sr1[index], start=ifelse(start<1, 1, start), end=fPrimEnd)
-      sr2_trim <- narrow(sr2[index], start=rPrimEnd+1, width=NA)
+      sr1_prim <- narrow(sr1, start=ifelse(start<1, 1, start), end=fPrimEnd)
+      sr2_trim <- narrow(sr2, start=rPrimEnd+1, width=NA)
       start <-rPrimEnd-nchar(primerRev)+1
-      sr2_prim <- narrow(sr2[index], start=ifelse(start<1, 1, start), end=rPrimEnd)
+      sr2_prim <- narrow(sr2, start=ifelse(start<1, 1, start), end=rPrimEnd)
       # write reads
       if(outputPrimerSequence){
         writeFastq(sr1_prim,
