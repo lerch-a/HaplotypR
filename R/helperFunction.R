@@ -101,7 +101,7 @@ flagChimera <- function(hapTable, overviewHap){
 }
 
 
-getReferenceSequence<- function(genome, forwardPrimer, reversePrimer){
+getReferenceSequence <- function(genome, forwardPrimer, reversePrimer){
   refSeq <- apply(cbind(Forward=forwardPrimer, Reverse=reversePrimer), 1, function(rr){
     Fprobe <- rr["Forward"]
     Rprobe <- rr["Reverse"]
@@ -110,7 +110,8 @@ getReferenceSequence<- function(genome, forwardPrimer, reversePrimer){
       matchProbePair(as.character(Fprobe), as.character(Rprobe), sub, verbose=F) # 1 "theoretical amplicon"
     })
     lstViews <- lstViews[lengths(lstViews)>0]
-    stopifnot(length(lstViews)==1) # check if single match
+    if(length(lstViews)!=1) # check if single match
+      return("")
     seq <- unlist(lapply(lstViews, function(vw){ 
       toString(vw)
     }))
@@ -157,3 +158,31 @@ getReferenceLocation <- function(genome, forwardPrimer, reversePrimer, includPri
   })
   return(unlist(as(refLocation,"GRangesList")))
 }
+
+assignStrain <- function(haplotypes, refFn){
+  refSeq <- readDNAStringSet(refFn)
+  #refSeq <- narrow(refSeq, 1, width(haplotypes)[1])
+  refName <- unlist(lapply(haplotypes, function(hap){
+    # hap <- haplotypes[[1]]
+    paste(names(refSeq)[hap==refSeq], collapse=";")
+  }))
+  return(refName)
+}
+
+assignSNP <- function(haplotypes, snpTab){
+  snpTab <- snpTab[snpTab$ALT!="",]
+  if(nrow(snpTab)>0){
+    mutLst <- do.call(rbind, lapply(1:nrow(snpTab), function(ii){
+      message(ii)
+      pos <- snpTab$nt_position_coding_strand[ii]
+      snp <- subseq(haplotypes, pos, width=1)
+      ifelse(snpTab$ALT[ii]==as.character(snp), snpTab$Mutation[ii], paste0("p",pos))
+    }))
+    mutLst <- apply(mutLst, 2, function(hh){
+      hh <- hh[!is.na(hh)]
+      paste0(hh, collapse=",")
+    })
+    return(mutLst)
+  }else return(NULL)
+}
+
