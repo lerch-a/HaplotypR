@@ -203,7 +203,5 @@ createFinalHaplotypTableDADA2 <- function(outputDir, sampleTable, markerTable, r
                                               minHaplotypCoverage, minSampleCoverage, minReplicate, detectability, marker, postfix))
   write.table(markerRes, file=markerResFn, sep="\t", row.names=F, col.names=T)
   return(markerRes)
-})
-names(res) <- markerTable$MarkerID
-return(res)
 }
+
