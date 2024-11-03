@@ -18,8 +18,7 @@ mergeMinIONfiles <- function(inDir, outDir="dePlexSample", sampleTab){
 
 
 demultiplexByMarkerMinION <- function (sampleTable, markerTable, outputDir, trimFilenameExt = "R1\\.fastq$", 
-          progressReport = message, ...) 
-{
+          progressReport = message, ...) {
   stopifnot(is.data.frame(sampleTable), nrow(sampleTable) > 
               0, all(c("FileR1", "SampleID", "SampleName", 
                        "BarcodePair") %in% colnames(sampleTable)), all(file.exists(c(sampleTable$FileR1))), is.data.frame(markerTable), nrow(markerTable) > 
@@ -54,8 +53,7 @@ demultiplexByMarkerMinION <- function (sampleTable, markerTable, outputDir, trim
 
 removePrimerMinION <- function (fastqFileR1, outputFile, primerFwd, primerRev, 
           max.mismatch = 0, with.indels = F, outputPrimerSequence = F, 
-          progressReport = message) 
-{
+          progressReport = message) {
   if (!is.function(progressReport)) 
     progressReport <- message
   msg <- paste("Processing file", basename(fastqFileR1))
@@ -140,3 +138,5 @@ removePrimerMinION <- function (fastqFileR1, outputFile, primerFwd, primerRev,
                          FileR1 = paste(outputFile, "_F.fastq.gz", sep = ""), 
                          stringsAsFactors = F))
 }
+
+

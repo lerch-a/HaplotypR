@@ -194,7 +194,7 @@ demultiplexByMarker <- function(sampleTable, markerTable, outputDir, trimFilenam
   return(resM)
 }
 
-mergeAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, method=c("vsearch","NGmerge"), mergePrefix="_merge", trimFilenameExt="_F\\.fastq.gz$", progressReport=message){
+mergeAmpliconReads <- function(fastqFileR1, fastqFileR2, outputDir, method=c("NGmerge","vsearch"), mergePrefix="_merge", trimFilenameExt="_F\\.fastq.gz$", progressReport=message){
   
   if(length(fastqFileR1) != length(fastqFileR2))
     stop("Vector length of fastqFileR1 and fastqFileR2 not identical.")

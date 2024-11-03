@@ -161,9 +161,7 @@ getReferenceLocation <- function(genome, forwardPrimer, reversePrimer, includPri
 
 assignStrain <- function(haplotypes, refFn){
   refSeq <- readDNAStringSet(refFn)
-  #refSeq <- narrow(refSeq, 1, width(haplotypes)[1])
   refName <- unlist(lapply(haplotypes, function(hap){
-    # hap <- haplotypes[[1]]
     paste(names(refSeq)[hap==refSeq], collapse=";")
   }))
   return(refName)
@@ -173,7 +171,6 @@ assignSNP <- function(haplotypes, snpTab){
   snpTab <- snpTab[snpTab$ALT!="",]
   if(nrow(snpTab)>0){
     mutLst <- do.call(rbind, lapply(1:nrow(snpTab), function(ii){
-      message(ii)
       pos <- snpTab$nt_position_coding_strand[ii]
       snp <- subseq(haplotypes, pos, width=1)
       ifelse(snpTab$ALT[ii]==as.character(snp), snpTab$Mutation[ii], paste0("p",pos))
@@ -184,5 +181,36 @@ assignSNP <- function(haplotypes, snpTab){
     })
     return(mutLst)
   }else return(NULL)
+}
+
+rmNreads <- function(x) {
+  numN <- alphabetFrequency(sread(x), baseOnly=T)[,"other"]
+  return(x[numN==0])
+}
+
+writeHaplotypList <- function(resLst){
+  do.call(rbind, lapply(names(resLst), function(nm){
+    message(nm)
+    do.call(rbind, lapply(rownames(resLst[[nm]][[1]]), function(id){
+      # nm <- names(resLst)[1]
+      # id <- rownames(resLst[[nm]][[1]])[1]
+      hap <- unlist(resLst[[nm]][[1]][id,,drop=F])
+      samId <- strsplit(id, "_BC")[[1]][1]
+      df <- data.frame(SampleID=samId, MarkerID=nm, 
+                       Haplotype=names(hap),
+                       Reads=hap)
+      if(length(resLst[[nm]])>=3)
+        df$Strain=resLst[[nm]][[3]][names(hap)]
+      else
+        df$Strain=NA
+      if(length(resLst[[nm]])==4)
+        df$Mutations=resLst[[nm]][[4]][names(hap)]
+      else
+        df$Mutations=NA
+      # remove haplotyops with 0 reads
+      df <- df[df$Reads>0,,drop=F]
+      return(df)
+    }))
+  }))
 }
 
