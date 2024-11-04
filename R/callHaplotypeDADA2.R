@@ -65,20 +65,18 @@ createFinalHaplotypTableDADA2 <- function(outputDir, sampleTable, markerTable, r
   
   # run dada2
   err <- learnErrors(sampleTable$ReadFile, multithread=multithread)
-  # pdf("plotDataErrMinIon.pdf")
   # plotErrors(err, nominalQ=TRUE)
-  # dev.off()
   dadas <- dada(sampleTable$ReadFile, err=err, multithread=multithread, pool=pool, OMEGA_A=OMEGA_A)
   seqtab <- makeSequenceTable(dadas)
   # remove chimera
   seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=multithread, verbose=TRUE)
   #sum(seqtab.nochim)/sum(seqtab)
   seqtabLst <- split(as.data.frame(seqtab.nochim), sampleTable$MarkerID)
-  #saveRDS(seqtabLst, file.path(".", "seqtabMinION.RDS"))
+  file.remove(newFile)
   
   selMarker <- unique(sampleTable$MarkerID)
-  resultsLst <- lapply(unique(sampleTable$MarkerID), function(nm){
-    # nm <- "k13_5"
+  resultsLst <- lapply(selMarker, function(nm){
+    # nm <- "ama1_D3"
     message(nm)
     # get read counts and rename sample
     markTab <- seqtabLst[[nm]]
@@ -112,8 +110,10 @@ createFinalHaplotypTableDADA2 <- function(outputDir, sampleTable, markerTable, r
       haplotyp <- haplotyp[mLength]
     }
     # rename and save haplotyp sequence
-    names(haplotyp) <- paste(nm, "_Id", 1:length(haplotyp), sep="")
-    colnames(markTab) <- names(haplotyp)
+    if(length(haplotyp)>0){
+      names(haplotyp) <- paste(nm, "_Id", 1:length(haplotyp), sep="")
+      colnames(markTab) <- names(haplotyp)
+    }
     # save number of censored reads
     markTab <- cbind(markTab, Censored=totReads-rowSums(markTab, na.rm=T))
     writeFasta(haplotyp, file=file.path(outputDir, sprintf("HaplotypeList_%s.fasta", nm)))
@@ -121,17 +121,12 @@ createFinalHaplotypTableDADA2 <- function(outputDir, sampleTable, markerTable, r
   })
   names(resultsLst) <- selMarker
 
-  # strain <- strain[keepHaplotype]
-  #resLst <- resultsLst
-
-  
   finalHaplotyopList <- writeHaplotypList(resultsLst)
   #write.csv(finalHaplotyopList, file=file.path(outputDir, "finalHaplotypList_MinION_MH.csv"), row.names=F)
   
   ## Start TODO
   #browser()
-  ## End TODO
-  
+
   # set final haplotype names
   # rownames(haplotypesSample) <- overviewHap[rownames(haplotypesSample), "FinalHaplotype"]
   # if(devMode)
@@ -183,6 +178,7 @@ createFinalHaplotypTableDADA2 <- function(outputDir, sampleTable, markerTable, r
   #                                             minHaplotypCoverage, minSampleCoverage, minReplicate, detectability, marker, postfix))
   # write.table(markerRes, file=markerResFn, sep="\t", row.names=F, col.names=T)
   # return(markerRes)
+  ## End TODO
   return(finalHaplotyopList)
 }
 
