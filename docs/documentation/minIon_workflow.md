@@ -57,7 +57,10 @@ file.copy(from=system.file(package="HaplotypR", "extdata/ex3"), to=".", recursiv
 # List files example files in output direcoty
 dir(file.path("ex3"))
 ```
-The following files should be listed with the last R command: "marker_file.txt", "reads2_F.fastq.gz", "sample_file.txt". 
+The following files should be listed with the last R command: "marker_file.txt", "reads3.fastq.gz", "sample_file.txt". 
+
+
+WORK IN PROGRESS
 
 Run demultiplexing by sample and rename output files
 ```R
@@ -90,12 +93,6 @@ dePlexMarker <- demultiplexByMarker(dePlexSample, markerTab, outDeplexMarker)
 
 # save summary table
 write.table(dePlexMarker, file.path(outputDir, "demultiplexMarkerSummary.txt"), sep="\t", row.names=F)
-```
-
-subset: remove markers without sufficient reads 
-```R
-procReads <- procReads[procReads$numRead>10,]
-
 ```
 
 Call Haplotypes
