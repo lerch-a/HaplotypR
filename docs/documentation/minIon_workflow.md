@@ -29,7 +29,7 @@ Then install devtools by typing
 install.packages("devtools")
 ```
 
-and install NGmergeR and HaplotypR by typing
+and install HaplotypR by typing
 
 ```R
 library(devtools)
