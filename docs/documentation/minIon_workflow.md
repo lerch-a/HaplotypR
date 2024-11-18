@@ -93,6 +93,7 @@ write.table(dePlexMarker, file.path(outputDir, "demultiplexMarkerSummary.txt"), 
 ```
 
 subset: remove markers without sufficient reads 
+```R
 procReads <- procReads[procReads$numRead>10,]
 
 ```
