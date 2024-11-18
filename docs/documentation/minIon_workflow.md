@@ -52,7 +52,7 @@ if(!dir.exists(outputDir))
   dir.create(outputDir, recursive=T)
 
 # Copy example files to output directory
-file.copy(from=system.file(package="HaplotypR", "extdata/ex2"), to=".", recursive = T)
+file.copy(from=system.file(package="HaplotypR", "extdata/ex3"), to=".", recursive = T)
 
 # List files example files in output direcoty
 dir(file.path("ex3"))
@@ -62,8 +62,8 @@ The following files should be listed with the last R command: "marker_file.txt",
 Run demultiplexing by sample and rename output files
 ```R
 # set input file path
-primerFile <- "ex2/marker_file.txt"
-sampleFile <- "ex2/sample_file.txt"
+primerFile <- "ex3/marker_file.txt"
+sampleFile <- "ex3/sample_file.txt"
 reads <- list.files("ex3", pattern="reads", full.names = T)
 
 # create output subdirectory 
