@@ -9,6 +9,7 @@ createFinalHaplotypTableDADA2 <- function(outputDir, sampleTable, markerTable, r
                                      minHaplotypCoverage=3, minReplicate=2, 
                                      detectability=1/100, minSampleCoverage=300,
                                      minSeqLength=5, maxSeqLength=9999, filterIndel=T,
+                                     tempdir=tempdir(),
                                      multithread=FALSE, pool="pseudo", OMEGA_A=1e-120){
   require(dada2)
   
@@ -43,10 +44,9 @@ createFinalHaplotypTableDADA2 <- function(outputDir, sampleTable, markerTable, r
   }
 
   # filter read file
-  filtDir <- file.path(outputDir,"filtered")
+  filtDir <- file.path(tempdir,"filtered")
+  dir.create(filtDir)
   newFile <- file.path(filtDir, basename(sampleTable$ReadFile))
-  suppressMessages(dir.create(filtDir))
-  #file.remove(newFile[file.exists(newFile)])
   numReads <- unlist(lapply(seq_along(sampleTable$ReadFile), function(ii){
     sr <- readFastq(sampleTable$ReadFile[ii])
     sr <- sr[minSeqLength<width(sr) & width(sr)<maxSeqLength]
@@ -77,7 +77,7 @@ createFinalHaplotypTableDADA2 <- function(outputDir, sampleTable, markerTable, r
   selMarker <- unique(sampleTable$MarkerID)
   resultsLst <- lapply(selMarker, function(nm){
     # nm <- "ama1_D3"
-    message(nm)
+    # message(nm)
     # get read counts and rename sample
     markTab <- seqtabLst[[nm]]
     markTab <- markTab[,colSums(markTab)>0, drop=F]
@@ -121,6 +121,8 @@ createFinalHaplotypTableDADA2 <- function(outputDir, sampleTable, markerTable, r
   })
   names(resultsLst) <- selMarker
 
+  file.remove(newFile[file.exists(newFile)])
+  file.remove(filtDir)
   finalHaplotyopList <- writeHaplotypList(resultsLst)
   #write.csv(finalHaplotyopList, file=file.path(outputDir, "finalHaplotypList_MinION_MH.csv"), row.names=F)
   
