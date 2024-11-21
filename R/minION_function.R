@@ -52,7 +52,7 @@ demultiplexByMarkerMinION <- function (sampleTable, markerTable, outputDir, trim
 
 
 removePrimerMinION <- function (fastqFileR1, outputFile, primerFwd, primerRev, 
-          max.mismatch = 0, with.indels = F, outputPrimerSequence = F, 
+          max.mismatch = 0, with.indels = F, outputPrimerSequence = F, outputUntrimedSequence = F,
           progressReport = message) {
   if (!is.function(progressReport)) 
     progressReport <- message
@@ -85,8 +85,9 @@ removePrimerMinION <- function (fastqFileR1, outputFile, primerFwd, primerRev,
     srR <- srR[index==1]
     srR <- reverseComplement(srR)
     sr <- append(srF,srR)
-    writeFastq(sr, file = paste(outputFile, "_untrimF.fastq.gz", sep = ""), mode = mode, 
-               compress = T)
+    if(outputUntrimedSequence){
+      writeFastq(sr, file = paste(outputFile, "_untrimF.fastq.gz", sep = ""), mode = mode, compress = T)
+    }
     rm(srF, srR)
     if (length(sr) > 0) {
       fPrimCoord <- vmatchPattern(primerFwd, sread(sr),

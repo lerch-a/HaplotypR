@@ -6,7 +6,7 @@ The HaplotypR project was developed by Anita Lerch. A paper with more details ab
 
   * Lerch, A. et al. Development Of Amplicon Deep Sequencing Markers And Data Analysis Pipeline For Genotyping Multi-Clonal Malaria Infections. BMC Genomics (2017), 18(1), p.864, http://dx.doi.org/10.1186/s12864-017-4260-y.
   * Lerch, A. et al. Longitudinal tracking and quantification of individual Plasmodium falciparum clones in complex infections. Sci. Rep. 9, 3333 (2019), http://dx.doi.org/10.1038/s41598-019-39656-7.
-  * xx
+  * Holzschuh A, et al. (2024) Using a mobile nanopore sequencing lab for end-to-end genomic surveillance of Plasmodium falciparum: A feasibility study. PLOS Glob Public Health 4(2): e0002743, https://doi.org/10.1371/journal.pgph.0002743.
   * xx
 
 # License
@@ -51,28 +51,28 @@ outputDir <- "exampleHaplotypR"
 if(!dir.exists(outputDir))
   dir.create(outputDir, recursive=T)
 
-# Copy example files to output directory
+# Copy example files to working directory
 file.copy(from=system.file(package="HaplotypR", "extdata/ex3"), to=".", recursive = T)
 
 # List files example files in output direcoty
 dir(file.path("ex3"))
 ```
-The following files should be listed with the last R command: "marker_file.txt", "reads2_F.fastq.gz", "sample_file.txt". 
+The following files should be listed with the last R command: "marker_file_ex3.txt", "sample_file_ex3.txt" and others. 
 
 Run demultiplexing by sample and rename output files
 ```R
 # set input file path
-primerFile <- "ex3/marker_file.txt"
-sampleFile <- "ex3/sample_file.txt"
-reads <- list.files("ex3", pattern="reads", full.names = T)
+primerFile <- "ex3/marker_file_ex3.txt"
+sampleFile <- "ex3/sample_file_ex3.txt"
+readsDir <- "ex3/read_dir_ex3"
 
 # create output subdirectory 
 outDeplexSample <- file.path(outputDir, "dePlexSample")
-dir.create(outDeplexSample)
+dir.create(outDeplexSample, recursive=T)
 
-# rename output files to sample files
+# load rename sample files and merge to a single file per sample if needed
 sampleTab <- read.delim(sampleFile, stringsAsFactors=F)
-dePlexSample <- renameDemultiplexedFiles(sampleTab, dePlexSample)
+dePlexSample <- mergeMinIONfiles(inDir=readsDir, outDir=outDeplexSample, sampleTab=sampleTab)
 
 # save summary table
 write.table(dePlexSample, file.path(outputDir, "demultiplexSampleSummary.txt"), sep="\t", row.names=F)
@@ -86,16 +86,13 @@ dir.create(outDeplexMarker)
   
 # process each marker
 markerTab <- read.delim(primerFile, stringsAsFactors=F)
-dePlexMarker <- demultiplexByMarker(dePlexSample, markerTab, outDeplexMarker)
+# shorten primer sequence to same length for demultiplexing
+markerTab$Forward <- substr(markerTab$Forward, start=nchar(markerTab$Forward)-20, stop=nchar(markerTab$Forward))
+markerTab$Reverse <- substr(markerTab$Reverse, start=nchar(markerTab$Reverse)-20, stop=nchar(markerTab$Reverse))
+dePlexMarker <- demultiplexByMarkerMinION(dePlexSample, markerTab, outDeplexMarker, max.mismatch=2)
 
 # save summary table
 write.table(dePlexMarker, file.path(outputDir, "demultiplexMarkerSummary.txt"), sep="\t", row.names=F)
-```
-
-subset: remove markers without sufficient reads 
-```R
-procReads <- procReads[procReads$numRead>10,]
-
 ```
 
 Call Haplotypes
@@ -103,17 +100,15 @@ Call Haplotypes
 # call haplotype options
 minCov <- 3
 detectionLimit <- 1/100
-minOccHap <- 2
-minCovSample <- 25
-
-# remove samples without reads
-procReads <- procReads[procReads$numRead>0,]
+minOccHap <- 1
+minCovSample <- 100
 
 # call final haplotypes
 finalTab <- createFinalHaplotypTableDADA2(
-  outputDir = outputDir, sampleTable = procReads, markerTable = markerTab,
-  referenceSequence=refSeq, filterIndel=T,
+  outputDir = outputDir, sampleTable = dePlexMarker, markerTable = markerTab,
+  referenceSequence=NULL, filterIndel=T,
   minHaplotypCoverage = minCov, minReplicate = minOccHap, 
   detectability = detectionLimit, minSampleCoverage = minCovSample,
   multithread=FALSE, pool="pseudo", OMEGA_A=1e-120)
 ```
+
