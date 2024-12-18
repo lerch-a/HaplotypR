@@ -12,15 +12,16 @@ createFinalHaplotypTableDADA2 <- function(outputDir, sampleTable, markerTable, r
                                      multithread=FALSE, pool="pseudo", OMEGA_A=1e-120){
   require(dada2)
   
-  # check if input file exists
-  sampleTable <- sampleTable[!is.na(sampleTable$FileR1),]
-  sampleTable <- sampleTable[file.exists(sampleTable$FileR1),]
-  
+  # fix for historical inconsistancy
+  if("ReadFile" %in% colnames(sampleTable)){
+    sampleTable$ReadFile <- sampleTable$ReadFile
+  }
+
   # check args
   stopifnot(
     is.character(outputDir), length(outputDir) == 1, file.exists(outputDir),
-    is.data.frame(sampleTable), all(c("MarkerID", "FileR1", "SampleID", "SampleName") %in% colnames(sampleTable)),
-    is.character(sampleTable$FileR1),
+    is.data.frame(sampleTable), all(c("MarkerID", "ReadFile", "SampleID", "SampleName") %in% colnames(sampleTable)),
+    is.character(sampleTable$ReadFile),
     is.data.frame(markerTable), all(c("MarkerID") %in% colnames(markerTable)),
     is.character(postfix), length(postfix) == 1,
     is.numeric(minHaplotypCoverage), length(minHaplotypCoverage) == 1,
@@ -42,18 +43,23 @@ createFinalHaplotypTableDADA2 <- function(outputDir, sampleTable, markerTable, r
     names(referenceSequence) <- markerTable$MarkerID
   }
 
+  
+  # check if input file exists
+  sampleTable <- sampleTable[!is.na(sampleTable$ReadFile),]
+  sampleTable <- sampleTable[file.exists(sampleTable$ReadFile),]
+  
   # filter read file
   filtDir <- file.path(outputDir,"filtered")
   dir.create(filtDir)
-  newFile <- file.path(filtDir, basename(sampleTable$FileR1))
-  numReads <- unlist(lapply(seq_along(sampleTable$FileR1), function(ii){
-    sr <- readFastq(sampleTable$FileR1[ii])
+  newFile <- file.path(filtDir, basename(sampleTable$ReadFile))
+  numReads <- unlist(lapply(seq_along(sampleTable$ReadFile), function(ii){
+    sr <- readFastq(sampleTable$ReadFile[ii])
     sr <- sr[minSeqLength<width(sr) & width(sr)<maxSeqLength]
     sr <- rmNreads(sr)
     #length(sr)
     writeFastq(sr, newFile[[ii]], compress = T)
   }))
-  sampleTable$FileR1 <- newFile
+  sampleTable$ReadFile <- newFile
   sampleTable$numReads <- numReads
   sampleTable <- sampleTable[sampleTable$numReads>=3,]
   #write.table(sampleTable, "demultiplexMarkerSummary_MinION_filt.txt", sep="\t", row.names=F)
@@ -63,9 +69,9 @@ createFinalHaplotypTableDADA2 <- function(outputDir, sampleTable, markerTable, r
   #                      compress=TRUE, multithread=TRUE)
   
   # run dada2
-  err <- learnErrors(sampleTable$FileR1, multithread=multithread)
+  err <- learnErrors(sampleTable$ReadFile, multithread=multithread)
   # plotErrors(err, nominalQ=TRUE)
-  dadas <- dada(sampleTable$FileR1, err=err, multithread=multithread, pool=pool, OMEGA_A=OMEGA_A)
+  dadas <- dada(sampleTable$ReadFile, err=err, multithread=multithread, pool=pool, OMEGA_A=OMEGA_A)
   seqtab <- makeSequenceTable(dadas)
   # remove chimera
   seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=multithread, verbose=TRUE)
@@ -81,7 +87,7 @@ createFinalHaplotypTableDADA2 <- function(outputDir, sampleTable, markerTable, r
     # get read counts and rename sample
     markTab <- seqtabLst[[nm]]
     markTab <- markTab[,colSums(markTab)>0, drop=F]
-    rownames(markTab) <- sampleTable$SampleID[match(rownames(markTab), basename(sampleTable$FileR1))]
+    rownames(markTab) <- sampleTable$SampleID[match(rownames(markTab), basename(sampleTable$ReadFile))]
     # get haplotype sequence
     haplotyp <- DNAStringSet(colnames(markTab))
     
