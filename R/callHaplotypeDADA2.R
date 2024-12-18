@@ -127,8 +127,8 @@ createFinalHaplotypTableDADA2 <- function(outputDir, sampleTable, markerTable, r
   })
   names(resultsLst) <- selMarker
 
-  file.remove(newFile) # list.files(filtDir,"fastq.gz"))
-  file.remove(filtDir)
+  suppressWarnings(file.remove(newFile)) # list.files(filtDir,"fastq.gz"))
+  suppressWarnings(file.remove(filtDir))
   haplotyopList <- writeHaplotypList(resultsLst)
   
   ## check replicates
