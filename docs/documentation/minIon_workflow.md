@@ -70,7 +70,7 @@ readsDir <- "ex3/read_dir_ex3"
 outDeplexSample <- file.path(outputDir, "dePlexSample")
 dir.create(outDeplexSample, recursive=T)
 
-# load rename sample files and merge to a single file per sample if needed
+# rename sample files and merge to a single file per sample if needed
 sampleTab <- read.delim(sampleFile, stringsAsFactors=F)
 dePlexSample <- mergeMinIONfiles(inDir=readsDir, outDir=outDeplexSample, sampleTab=sampleTab)
 
@@ -110,5 +110,6 @@ finalTab <- createFinalHaplotypTableDADA2(
   minHaplotypCoverage = minCov, minReplicate = minOccHap, 
   detectability = detectionLimit, minSampleCoverage = minCovSample,
   multithread=FALSE, pool="pseudo", OMEGA_A=1e-120)
+  
+write.csv(finalTab, file=file.path(outputDir, "finalHaplotypList_vMinION.csv"), row.names=F)
 ```
-
