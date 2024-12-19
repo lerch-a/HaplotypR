@@ -13,8 +13,8 @@ createFinalHaplotypTableDADA2 <- function(outputDir, sampleTable, markerTable, r
   require(dada2)
   
   # fix for historical inconsistancy
-  if("ReadFile" %in% colnames(sampleTable)){
-    sampleTable$ReadFile <- sampleTable$ReadFile
+  if(!"ReadFile" %in% colnames(sampleTable)){
+    sampleTable$ReadFile <- sampleTable$FileR1
   }
 
   # check args
@@ -156,9 +156,13 @@ createFinalHaplotypTableDADA2 <- function(outputDir, sampleTable, markerTable, r
     return(haplotyopList)
   }
 
+  # resultsLst <- lapply(names(resultsLst), function(marker){
   # markerResFn <- file.path(outputDir, sprintf("finalHaplotypeList_Hcov%.0f_Scov%.0f_occ%i_sens%.4f_%s%s.txt", 
   #                                             minHaplotypCoverage, minSampleCoverage, minReplicate, detectability, marker, postfix))
   # write.table(haplotyopList, file=markerResFn, sep="\t", row.names=F, col.names=T)
   # write.csv(haplotyopList, file=markerResFn, row.names=F)
+  # })
+
+
 }
 
