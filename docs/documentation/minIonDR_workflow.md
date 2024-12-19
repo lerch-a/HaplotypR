@@ -20,7 +20,7 @@ To install HaplotypR start R and first install ShortRead and dada2 by typing:
 ```R
 if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
-BiocManager::install(c("ShortRead","dada2")
+BiocManager::install(c("ShortRead","dada2"))
 ```
 
 Then install devtools by typing
@@ -116,11 +116,9 @@ write.csv(finalTab, file=file.path(outputDir, "finalHaplotypList_vMinION.csv"), 
 
 Calculate mismatch rate and call SNPs
 ```R
-dePlexMarker <- dePlexMarker[dePlexMarker$]
-
 refSeq <- DNAStringSet(markerTab$ReferenceSequence)
 names(refSeq) <- markerTab$MarkerID
-snpLst <- createSNPsList(outputDir, sampleTable=dePlexMarker, markerTable=markerTab, refSeq=refSeq, postfix=postfix)
+snpLst <- createSNPsList(outputDir, sampleTable=dePlexMarker, markerTable=markerTab, refSeq=refSeq)
 ```
 
 

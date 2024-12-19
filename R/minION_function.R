@@ -45,6 +45,9 @@ demultiplexByMarkerMinION <- function (sampleTable, markerTable, outputDir, trim
   }))
   resM <- merge.data.frame(sampleTable[, c("SampleID", "SampleName", 
                                            "BarcodePair")], resM, by = c("SampleID", "BarcodePair"))
+  # temporary fix of historical issues
+  sampleTable$ReadFile <- sampleTable$FileR1
+  sampleTable$FileR1 <- NULL
   return(resM)
 }
 
