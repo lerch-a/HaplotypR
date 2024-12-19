@@ -145,4 +145,6 @@ mutationLst <- unlist(lapply(markerTab$MarkerID, function(marker){
   return(mut)
 }))
 finalTab$Mutations <- mutationLst[finalTab$Haplotype]
+
+write.csv(finalTab, file=file.path(outputDir, "finalHaplotypList_vMinION_vDR.csv"), row.names=F)
 ```

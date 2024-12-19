@@ -168,12 +168,12 @@ assignStrain <- function(haplotypes, refFn){
 }
 
 assignSNP <- function(haplotypes, snpTab){
-  snpTab <- snpTab[snpTab$ALT!="",]
+  snpTab <- snpTab[snpTab$Alt!="",]
   if(nrow(snpTab)>0){
     mutLst <- do.call(rbind, lapply(1:nrow(snpTab), function(ii){
-      pos <- snpTab$nt_position_coding_strand[ii]
+      pos <- snpTab$Position[ii]
       snp <- subseq(haplotypes, pos, width=1)
-      ifelse(snpTab$ALT[ii]==as.character(snp), snpTab$Mutation[ii], paste0("p",pos))
+      ifelse(snpTab$Alt[ii]==as.character(snp), paste0("p",pos,"=",snpTab$Mutation[ii]), paste0("p",pos,"=NA"))
     }))
     mutLst <- apply(mutLst, 2, function(hh){
       hh <- hh[!is.na(hh)]
