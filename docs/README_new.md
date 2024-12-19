@@ -162,7 +162,7 @@ Call Haplotypes
 # call haplotype options
 minCov <- 3
 detectionLimit <- 1/100
-minOccHap <- 2
+minOccHap <- 1
 minCovSample <- 25
 
 # remove samples without reads
@@ -175,5 +175,7 @@ finalTab <- createFinalHaplotypTableDADA2(
   minHaplotypCoverage = minCov, minReplicate = minOccHap, 
   detectability = detectionLimit, minSampleCoverage = minCovSample,
   multithread=FALSE, pool="pseudo", OMEGA_A=1e-120)
+
+write.csv(finalTab, file=file.path(outputDir, "finalHaplotypList_vDADA2.csv"), row.names=F)
 ```
 
